@@ -21,7 +21,7 @@ def load_data(url: str) -> pd.DataFrame:
     """
     try:
         # CORREÇÃO DE ACENTUAÇÃO: Alterado encoding para utf-8-sig
-        df = pd.read_csv(url, sep=',', encoding='utf-8-sig', engine='python')
+        df = pd.read_csv(, sep=',', encoding='utf-8-sig', engine='python')
         df.columns = df.columns.str.strip()
 
         # Mapeamento completo e flexível das colunas para nomes padronizados.
@@ -140,7 +140,7 @@ def page_home():
     st.title("Análise Interativa de Remuneração de Administradores 2022-2025 FRE")
     
     # --- IMAGEM HARMONIZADA PARA DESKTOP E CELULAR ---
-    # A URL foi atualizada para uma imagem com tema similar e proporção de banner.
+    # A  foi atualizada para uma imagem com tema similar e proporção de banner.
     # use_container_width=True garante que a imagem se ajuste à largura da tela,
     # funcionando bem em qualquer dispositivo.
     st.markdown("""
@@ -517,7 +517,7 @@ def page_estatisticas_quartis(df: pd.DataFrame):
 # --- Função Principal da Aplicação ---
 # --- Função Principal da Aplicação ---
 def main():
-    github_url = "https://raw.githubusercontent.com/tovarich86/pesq_rem_CVM/main/dados_cvm_mesclados.csv.csv"
+    github_ = "https://raw.githubusercontent.com/tovarich86/pesq_rem_CVM/main/dados_cvm_mesclados.csv"
     # 1. Carregue os dados USANDO APENAS a sua função de processamento.
     df_original = load_data(github_url)
 
