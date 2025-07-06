@@ -137,7 +137,7 @@ def format_year(year):
 # --- PÁGINAS DA APLICAÇÃO ---
 
 def page_home():
-    st.title("Análise Interativa de Remuneração de Administradores")
+    st.title("Análise Interativa de Remuneração de Administradores 2022-2025 FRE")
     
     # --- IMAGEM HARMONIZADA PARA DESKTOP E CELULAR ---
     # A URL foi atualizada para uma imagem com tema similar e proporção de banner.
