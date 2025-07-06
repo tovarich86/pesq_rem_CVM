@@ -365,22 +365,21 @@ def page_bonus_plr(df: pd.DataFrame):
     if not df_plot.empty:
         df_plot['ANO_REFER_FORMATTED'] = df_plot['ANO_REFER'].apply(format_year)
         
+        # O template "streamlit" garante que o gráfico siga o tema da aplicação
         fig = px.bar(df_plot, x='ANO_REFER_FORMATTED', y='Valor', color='Métrica', 
                      barmode='stack',
                      facet_col='Tipo', 
                      title=f"Evolução de Bônus e PLR para {empresa} ({orgao})", 
-                     labels={'ANO_REFER_FORMATTED': 'Ano', 'Valor': f'Valor {calc_type} (R$)'})
+                     labels={'ANO_REFER_FORMATTED': 'Ano', 'Valor': f'Valor {calc_type} (R$)'},
+                     template="streamlit") # Adicionado para melhor integração
         
         fig.update_xaxes(type='category')
 
-        # --- MUDANÇA PRINCIPAL AQUI ---
-        # Lógica robusta para adicionar anotações de texto apenas se os dados existirem.
         totals_df = df_plot.groupby(['ANO_REFER_FORMATTED', 'Tipo'])['Valor'].sum().reset_index()
         
         bonus_totals = totals_df[totals_df['Tipo'] == 'Bônus']
         plr_totals = totals_df[totals_df['Tipo'] == 'PLR']
 
-        # Adiciona o traço para Bônus se houver dados de Bônus. Ele sempre será a coluna 1 se existir.
         if not bonus_totals.empty:
             fig.add_trace(go.Scatter(
                 x=bonus_totals['ANO_REFER_FORMATTED'],
@@ -388,14 +387,12 @@ def page_bonus_plr(df: pd.DataFrame):
                 text=[f"<b>R$ {v:,.0f}</b>" for v in bonus_totals['Valor']],
                 mode='text',
                 textposition='top center',
-                textfont=dict(size=12, color="black"),
+                # CORREÇÃO: Removido 'color="black"' para permitir que a cor seja automática
+                textfont=dict(size=12), 
                 showlegend=False
             ), row=1, col=1)
 
-        # Adiciona o traço para PLR se houver dados de PLR.
         if not plr_totals.empty:
-            # Determina a coluna correta para o PLR.
-            # Se também houver dados de bônus, PLR está na coluna 2. Senão, está na coluna 1.
             col_idx = 2 if not bonus_totals.empty else 1
             fig.add_trace(go.Scatter(
                 x=plr_totals['ANO_REFER_FORMATTED'],
@@ -403,7 +400,8 @@ def page_bonus_plr(df: pd.DataFrame):
                 text=[f"<b>R$ {v:,.0f}</b>" for v in plr_totals['Valor']],
                 mode='text',
                 textposition='top center',
-                textfont=dict(size=12, color="black"),
+                # CORREÇÃO: Removido 'color="black"' para permitir que a cor seja automática
+                textfont=dict(size=12),
                 showlegend=False
             ), row=1, col=col_idx)
 
@@ -457,13 +455,14 @@ def page_bonus_plr(df: pd.DataFrame):
         df_agg[col_rank] = df_agg['Valor'] / df_agg['Membros']
         df_rank = df_agg.nlargest(15, col_rank)
     if not df_rank.empty and df_rank[col_rank].sum() > 0:
-        fig_rank = px.bar(df_rank.sort_values(by=col_rank), x=col_rank, y='NOME_COMPANHIA', orientation='h', text_auto='.2s', title=f"Top 15 Empresas por {rank_metric_name} ({calc_type_rank}) em {format_year(ano_rank)}")
+        fig_rank = px.bar(df_rank.sort_values(by=col_rank), x=col_rank, y='NOME_COMPANHIA', orientation='h', text_auto='.2s', title=f"Top 15 Empresas por {rank_metric_name} ({calc_type_rank}) em {format_year(ano_rank)}",
+                         template="streamlit") # Adicionado para melhor integração
         fig_rank.update_layout(yaxis={'categoryorder':'total ascending'}, xaxis_title=f"Valor {calc_type_rank} (R$)", yaxis_title="Empresa")
         st.plotly_chart(fig_rank, use_container_width=True)
         create_download_button(df_rank, f"ranking_bonus_plr_{ano_rank}")
     else:
         st.info("Não há dados para gerar o ranking para a seleção atual.")
-
+        
 def page_estatisticas_quartis(df: pd.DataFrame):
     st.header("Análise Estatística por Quartis")
     metric_options = {
