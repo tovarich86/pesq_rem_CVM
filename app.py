@@ -346,24 +346,70 @@ def page_bonus_plr(df: pd.DataFrame):
         orgao = st.selectbox("2. Selecione o Órgão", orgaos_disponiveis, index=default_index, key='orgao_bonus_1')
     with col3:
         calc_type = st.radio("Calcular por:", ["Total", "Média por Membro"], key='calc_type_bonus_1', horizontal=True)
+
     df_filtered = df_empresa[df_empresa['ORGAO_ADMINISTRACAO'] == orgao]
     bonus_cols = {'Bônus Mínimo': 'BONUS_MIN', 'Bônus Alvo': 'BONUS_ALVO', 'Bônus Máximo': 'BONUS_MAX', 'Bônus Pago': 'BONUS_PAGO', 'PLR Mínimo': 'PLR_MIN', 'PLR Alvo': 'PLR_ALVO', 'PLR Máximo': 'PLR_MAX', 'PLR Pago': 'PLR_PAGO'}
     yearly_data = df_filtered.groupby('ANO_REFER').agg({**{col: 'sum' for col in bonus_cols.values() if col in df.columns}, 'NUM_MEMBROS_BONUS_PLR': 'first'}).reset_index()
+
     if calc_type == "Média por Membro":
         yearly_data = yearly_data[yearly_data['NUM_MEMBROS_BONUS_PLR'] > 0]
         for col in bonus_cols.values():
             if col in yearly_data.columns:
                 yearly_data[col] = yearly_data[col] / yearly_data['NUM_MEMBROS_BONUS_PLR']
+
     df_plot = yearly_data.melt(id_vars=['ANO_REFER'], value_vars=[col for col in bonus_cols.values() if col in yearly_data.columns], var_name='Métrica', value_name='Valor')
     df_plot = df_plot[df_plot['Valor'] > 0]
     df_plot['Tipo'] = df_plot['Métrica'].apply(lambda x: 'Bônus' if 'BONUS' in x else 'PLR')
     df_plot['Métrica'] = df_plot['Métrica'].map({v: k for k, v in bonus_cols.items()})
+
     if not df_plot.empty:
         df_plot['ANO_REFER_FORMATTED'] = df_plot['ANO_REFER'].apply(format_year)
-        fig = px.bar(df_plot, x='ANO_REFER_FORMATTED', y='Valor', color='Métrica', barmode='group', facet_col='Tipo', title=f"Evolução de Bônus e PLR para {empresa} ({orgao})", labels={'ANO_REFER_FORMATTED': 'Ano', 'Valor': f'Valor {calc_type} (R$)'})
+        
+        # MUDANÇA 1: Alterar barmode de 'group' para 'stack' para empilhar as barras.
+        fig = px.bar(df_plot, x='ANO_REFER_FORMATTED', y='Valor', color='Métrica', 
+                     barmode='stack', # <-- ALTERADO AQUI
+                     facet_col='Tipo', 
+                     title=f"Evolução de Bônus e PLR para {empresa} ({orgao})", 
+                     labels={'ANO_REFER_FORMATTED': 'Ano', 'Valor': f'Valor {calc_type} (R$)'})
+        
         fig.update_xaxes(type='category')
+
+        # MUDANÇA 2: Calcular os totais para cada barra empilhada.
+        # Agrupamos por ano e tipo (cada tipo é um sub-gráfico/faceta) e somamos os valores.
+        totals_df = df_plot.groupby(['ANO_REFER_FORMATTED', 'Tipo'])['Valor'].sum().reset_index()
+        
+        # Separamos os totais para cada faceta (Bônus e PLR)
+        bonus_totals = totals_df[totals_df['Tipo'] == 'Bônus']
+        plr_totals = totals_df[totals_df['Tipo'] == 'PLR']
+
+        # MUDANÇA 3: Adicionar os totais como anotações de texto no gráfico.
+        # Adicionamos uma "camada" de texto invisível (Scatter) sobre cada faceta.
+        # Faceta 1 (Bônus)
+        fig.add_trace(go.Scatter(
+            x=bonus_totals['ANO_REFER_FORMATTED'],
+            y=bonus_totals['Valor'],
+            text=[f"<b>R$ {v:,.0f}</b>" for v in bonus_totals['Valor']],
+            mode='text',
+            textposition='top center',
+            textfont=dict(size=12, color="black"),
+            showlegend=False
+        ), row=1, col=1)
+
+        # Faceta 2 (PLR)
+        fig.add_trace(go.Scatter(
+            x=plr_totals['ANO_REFER_FORMATTED'],
+            y=plr_totals['Valor'],
+            text=[f"<b>R$ {v:,.0f}</b>" for v in plr_totals['Valor']],
+            mode='text',
+            textposition='top center',
+            textfont=dict(size=12, color="black"),
+            showlegend=False
+        ), row=1, col=2)
+
         st.plotly_chart(fig, use_container_width=True)
         create_download_button(df_plot, f"evolucao_bonus_plr_{empresa}_{orgao}")
+
+        # O restante da função permanece o mesmo...
         st.subheader("Performance: % do Alvo Efetivamente Pago")
         perf_cols = st.columns(len(yearly_data))
         for i, row in yearly_data.iterrows():
@@ -375,6 +421,7 @@ def page_bonus_plr(df: pd.DataFrame):
                 if row.get('PLR_ALVO', 0) > 0:
                     perc_plr = (row.get('PLR_PAGO', 0) / row['PLR_ALVO']) * 100
                     st.metric(label="PLR", value=f"{perc_plr:.1f}%")
+
         st.subheader("Potencial Máximo: % do Alvo")
         perf_max_cols = st.columns(len(yearly_data))
         for i, row in yearly_data.iterrows():
@@ -386,10 +433,12 @@ def page_bonus_plr(df: pd.DataFrame):
                 if row.get('PLR_ALVO', 0) > 0:
                     perc_plr_max = (row.get('PLR_MAX', 0) / row['PLR_ALVO']) * 100
                     st.metric(label="PLR (Máximo vs Alvo)", value=f"{perc_plr_max:.1f}%")
+
     else:
         st.info("Não há dados de Bônus ou PLR para exibir para a seleção atual.")
     st.markdown("---")
     st.subheader("Ranking de Empresas por Bônus/PLR")
+    # ... (o resto do código não precisa de alteração)
     col_rank1, col_rank2, col_rank3 = st.columns(3)
     with col_rank1:
         ano_rank = st.selectbox("1. Selecione o Ano", sorted(df['ANO_REFER'].unique(), reverse=True), key='ano_bonus_rank')
