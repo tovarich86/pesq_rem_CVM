@@ -174,37 +174,39 @@ def page_remuneracao_individual(df: pd.DataFrame):
     else:
         st.warning("Nenhum dado encontrado para a combinação de filtros no período de 2022-2024.")
 
-    # --- NOVA ANÁLISE: GRÁFICO BOX PLOT POR SETOR ---
+    # --- ANÁLISE APRIMORADA: GRÁFICO DE BARRAS POR SETOR ---
     st.markdown("---")
-    st.subheader("Distribuição da Remuneração por Setor")
+    st.subheader("Ranking de Empresas por Remuneração Individual")
 
-    col_box1, col_box2 = st.columns(2)
-    with col_box1:
-        ano_box = st.selectbox("Selecione o Ano para a Distribuição", sorted(df['ANO_REFER'].unique(), reverse=True), key='ano_box')
-    with col_box2:
+    col_bar1, col_bar2 = st.columns(2)
+    with col_bar1:
+        ano_bar = st.selectbox("Selecione o Ano para o Ranking", sorted(df['ANO_REFER'].unique(), reverse=True), key='ano_bar')
+    with col_bar2:
         metric_options = {'Máxima': 'REM_MAXIMA_INDIVIDUAL', 'Média': 'REM_MEDIA_INDIVIDUAL', 'Mínima': 'REM_MINIMA_INDIVIDUAL'}
-        metrica_selecionada = st.selectbox("Selecione a Métrica", list(metric_options.keys()), key='metrica_box')
+        metrica_selecionada = st.selectbox("Selecione a Métrica", list(metric_options.keys()), key='metrica_bar')
 
-    # Filtra os dados para o gráfico de box plot
+    # Filtra os dados para o gráfico de barras
     # Usa o 'orgao' já selecionado na parte de cima da página
-    df_box = df[(df['ANO_REFER'] == ano_box) & (df['ORGAO_ADMINISTRACAO'] == orgao)]
+    df_bar = df[(df['ANO_REFER'] == ano_bar) & (df['ORGAO_ADMINISTRACAO'] == orgao)]
     
     coluna_metrica = metric_options[metrica_selecionada]
-    df_box = df_box[df_box[coluna_metrica] > 0]
+    df_bar = df_bar[df_bar[coluna_metrica] > 0]
 
-    if not df_box.empty:
-        fig_box = px.box(
-            df_box,
-            x='SETOR_ATIVIDADE',
-            y=coluna_metrica,
-            color='SETOR_ATIVIDADE',
-            hover_name='NOME_COMPANHIA',
-            points="all", # Mostra todos os pontos (empresas)
-            title=f"Distribuição da Remuneração {metrica_selecionada} por Setor para '{orgao}' em {ano_box}",
-            labels={coluna_metrica: f"Remuneração {metrica_selecionada} (R$)", 'SETOR_ATIVIDADE': 'Setor de Atividade'}
+    # Pega o Top 15
+    df_top_companies = df_bar.nlargest(15, coluna_metrica)
+
+    if not df_top_companies.empty:
+        fig_bar = px.bar(
+            df_top_companies.sort_values(by=coluna_metrica), # Ordena para melhor visualização
+            x=coluna_metrica,
+            y='NOME_COMPANHIA',
+            orientation='h',
+            text_auto='.2s',
+            title=f"Top 15 Empresas por Remuneração {metrica_selecionada} ({orgao}, {ano_bar})",
+            labels={coluna_metrica: f"Remuneração {metrica_selecionada} (R$)", 'NOME_COMPANHIA': 'Empresa'}
         )
-        fig_box.update_xaxes(tickangle=45)
-        st.plotly_chart(fig_box, use_container_width=True)
+        fig_bar.update_layout(yaxis={'categoryorder':'total ascending'})
+        st.plotly_chart(fig_bar, use_container_width=True)
     else:
         st.warning(f"Não há dados de Remuneração {metrica_selecionada} para exibir para os filtros selecionados.")
 
