@@ -47,17 +47,19 @@ def load_data(url: str) -> pd.DataFrame:
 
             # Bloco 3: Componentes da Remuneração Total
             'NUM_MEMBROS_TOTAL': ['Quantidade_Total_Membros_Remunerados_Orgao'],
-            'REM_FIXA_SALARIO': ['Salario_Fixo_Anual_Total'],
-            'REM_FIXA_BENEFICIOS': ['Beneficios_Anual_Total'],
-            'REM_FIXA_POS_EMPREGO': ['Beneficios_Pos_Emprego_Anual_Total'],
-            'REM_FIXA_RESCISAO': ['Beneficios_Cessacao_Cargo_Anual_Total'],
-            'REM_FIXA_OUTROS': ['Outros_Valores_Remuneracao_Fixa_Anual_Total'],
-            'TOTAL_REM_FIXA': ['Valor_Total_Remuneracao_Fixa_Anual_Orgao'],
-            'REM_VAR_BONUS_PLR': ['Bonus_Participacao_Resultados_Anual_Total'],
-            'REM_VAR_ACOES': ['Remuneracao_Baseada_Acoes_Anual_Total'],
-            'REM_VAR_OUTROS': ['Outros_Valores_Remuneracao_Variavel_Anual_Total'],
-            'TOTAL_REM_VARIAVEL': ['Remuneracao_Variavel_Anual_Total'],
-            'TOTAL_REMUNERACAO_ORGAO': ['Valor_Total_Remuneracao_Anual_Orgao'],
+            'REM_FIXA_SALARIO': ['SALARIO'],
+            'REM_FIXA_BENEFICIOS': ['BENEFICIOS_DIRETOS_INDIRETOS'],
+            'REM_FIXA_COMITES': ['PARTICIPACOES_COMITES'],
+            'REM_FIXA_OUTROS': ['OUTROS_VALORES_FIXOS'],
+            'REM_VAR_BONUS': ['BONUS'],
+            'REM_VAR_PLR': ['PARTICIPACAO_RESULTADOS'],
+            'REM_VAR_REUNIOES': ['PARTICIPACAO_REUNIOES'],
+            'REM_VAR_COMISSOES': ['COMISSOES'],
+            'REM_VAR_OUTROS': ['OUTROS_VALORES_VARIAVEIS'],
+            'REM_POS_EMPREGO': ['POS_EMPREGO'],
+            'REM_CESSACAO_CARGO': ['CESSACAO_CARGO'],
+            'REM_ACOES_BLOCO3': ['BASEADA_ACOES'],
+            'TOTAL_REMUNERACAO_ORGAO': ['TOTAL_REMUNERACAO_ORGAO'],
 
             # Bloco 4: Métricas de Bônus e PLR
             'NUM_MEMBROS_BONUS_PLR': ['QTD_MEMBROS_REMUNERADOS_VARIAVEL'],
@@ -213,31 +215,80 @@ def page_remuneracao_individual(df: pd.DataFrame):
 
 def page_componentes_remuneracao(df: pd.DataFrame):
     st.header("Análise dos Componentes da Remuneração Total")
-    col1, col2 = st.columns(2)
+    
+    # --- Filtros ---
+    col1, col2, col3 = st.columns(3)
     with col1:
         orgao = st.selectbox("1. Selecione o Órgão", sorted(df['ORGAO_ADMINISTRACAO'].unique()), key='orgao_comp')
     df_orgao = df[df['ORGAO_ADMINISTRACAO'] == orgao]
+    
     with col2:
         empresas_disponiveis = sorted(df_orgao['NOME_COMPANHIA'].unique())
         if not empresas_disponiveis:
             st.warning("Nenhuma empresa encontrada para o órgão selecionado.")
             st.stop()
         empresa = st.selectbox("2. Selecione a Empresa", empresas_disponiveis, key='empresa_comp')
+        
+    df_empresa_orgao = df_orgao[df_orgao['NOME_COMPANHIA'] == empresa]
 
-    df_filtered = df_orgao[df_orgao['NOME_COMPANHIA'] == empresa]
-    component_cols = {
-        'Salário': 'REM_FIXA_SALARIO', 'Benefícios': 'REM_FIXA_BENEFICIOS', 'Pós-Emprego': 'REM_FIXA_POS_EMPREGO',
-        'Bônus/PLR': 'REM_VAR_BONUS_PLR', 'Ações (Bloco 2)': 'REM_VAR_ACOES', 'Outros': 'REM_FIXA_OUTROS'
-    }
-    yearly_data = df_filtered.groupby('ANO_REFER')[[col for col in component_cols.values() if col in df_filtered.columns]].sum().reset_index()
-    df_plot = yearly_data.melt(id_vars=['ANO_REFER'], var_name='Componente', value_name='Valor')
-    df_plot['Componente'] = df_plot['Componente'].map({v: k for k, v in component_cols.items()})
-    if not df_plot.empty and df_plot['Valor'].sum() > 0:
-        fig = px.bar(df_plot, x='ANO_REFER', y='Valor', color='Componente', title=f"Evolução dos Componentes da Remuneração para {empresa}", labels={'ANO_REFER': 'Ano', 'Valor': 'Valor Anual (R$)'})
-        fig.update_layout(xaxis_type='category', barmode='stack')
-        st.plotly_chart(fig, use_container_width=True)
+    with col3:
+        ano = st.selectbox("3. Selecione o Ano", sorted(df_empresa_orgao['ANO_REFER'].unique(), reverse=True), key='ano_comp')
+
+    df_filtered = df_empresa_orgao[df_empresa_orgao['ANO_REFER'] == ano]
+
+    # --- Exibição do Número de Membros ---
+    if not df_filtered.empty:
+        num_membros = df_filtered['NUM_MEMBROS_TOTAL'].iloc[0]
+        st.metric("Número de Membros Remunerados", f"{num_membros:.0f}")
     else:
-        st.info("Não há dados de remuneração para exibir.")
+        st.warning("Nenhum dado encontrado para a seleção atual.")
+        st.stop()
+    
+    st.markdown("---")
+
+    # --- Seleção do Tipo de Visão ---
+    st.subheader("Selecione a Visão de Análise")
+    visao = st.radio(
+        "Escolha como visualizar os dados:",
+        ("Composição da Remuneração", "Total Agregado vs. Média por Membro"),
+        horizontal=True,
+        key='visao_comp'
+    )
+
+    if visao == "Composição da Remuneração":
+        component_cols = {
+            'Salário': 'REM_FIXA_SALARIO', 'Benefícios': 'REM_FIXA_BENEFICIOS', 'Comitês': 'REM_FIXA_COMITES',
+            'Bônus': 'REM_VAR_BONUS', 'PLR': 'REM_VAR_PLR', 'Comissões': 'REM_VAR_COMISSOES',
+            'Pós-Emprego': 'REM_POS_EMPREGO', 'Cessação de Cargo': 'REM_CESSACAO_CARGO',
+            'Baseada em Ações': 'REM_ACOES_BLOCO3', 'Outros': 'REM_FIXA_OUTROS'
+        }
+        
+        data_plot = {'Componente': [], 'Valor': []}
+        for name, col in component_cols.items():
+            if col in df_filtered.columns and not df_filtered[col].empty:
+                data_plot['Componente'].append(name)
+                data_plot['Valor'].append(df_filtered[col].iloc[0])
+
+        df_plot = pd.DataFrame(data_plot)
+        df_plot = df_plot[df_plot['Valor'] > 0]
+        
+        if not df_plot.empty:
+            fig = px.pie(df_plot, names='Componente', values='Valor', title=f"Composição da Remuneração em {ano}", hole=.3)
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("Não há dados de componentes para exibir para a seleção atual.")
+
+    elif visao == "Total Agregado vs. Média por Membro":
+        total = df_filtered['TOTAL_REMUNERACAO_ORGAO'].iloc[0]
+        if num_membros > 0:
+            media_por_membro = total / num_membros
+        else:
+            media_por_membro = 0
+            
+        col_metric1, col_metric2 = st.columns(2)
+        col_metric1.metric("Remuneração Total do Órgão", f"R$ {total:,.2f}")
+        col_metric2.metric("Remuneração Média por Membro", f"R$ {media_por_membro:,.2f}")
+
 
 def page_remuneracao_acoes(df: pd.DataFrame):
     st.header("Análise de Remuneração Baseada em Ações")
