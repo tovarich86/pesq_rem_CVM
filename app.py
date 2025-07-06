@@ -130,8 +130,9 @@ def page_home():
     """)
 
 def page_remuneracao_individual(df: pd.DataFrame):
-    st.header("Análise Comparativa da Remuneração Individual (2022-2024)")
+    st.header("Análise da Remuneração Individual")
     
+    st.subheader("Evolução Comparativa por Empresa (2022-2024)")
     # Filtros para selecionar órgão e empresa
     col1, col2 = st.columns(2)
     with col1:
@@ -150,43 +151,62 @@ def page_remuneracao_individual(df: pd.DataFrame):
     df_filtered = df_orgao[(df_orgao['NOME_COMPANHIA'] == empresa) & (df_orgao['ANO_REFER'].isin([2022, 2023, 2024]))]
     
     if not df_filtered.empty:
-        # Seleciona as colunas relevantes para a análise
         df_analysis = df_filtered[['ANO_REFER', 'REM_MAXIMA_INDIVIDUAL', 'REM_MEDIA_INDIVIDUAL', 'REM_MINIMA_INDIVIDUAL']]
-        
-        # Transforma os dados do formato 'largo' para 'longo' para facilitar a plotagem
         df_plot = df_analysis.melt(id_vars=['ANO_REFER'], 
                                    value_vars=['REM_MAXIMA_INDIVIDUAL', 'REM_MEDIA_INDIVIDUAL', 'REM_MINIMA_INDIVIDUAL'],
                                    var_name='Métrica', 
                                    value_name='Valor')
         
-        # Mapeia os nomes técnicos para nomes amigáveis
-        metric_names = {
-            'REM_MAXIMA_INDIVIDUAL': 'Máxima',
-            'REM_MEDIA_INDIVIDUAL': 'Média',
-            'REM_MINIMA_INDIVIDUAL': 'Mínima'
-        }
+        metric_names = {'REM_MAXIMA_INDIVIDUAL': 'Máxima', 'REM_MEDIA_INDIVIDUAL': 'Média', 'REM_MINIMA_INDIVIDUAL': 'Mínima'}
         df_plot['Métrica'] = df_plot['Métrica'].map(metric_names)
-
-        # Remove valores zero para não poluir o gráfico
         df_plot = df_plot[df_plot['Valor'] > 0]
 
         if not df_plot.empty:
             fig = px.bar(
-                df_plot,
-                x='ANO_REFER',
-                y='Valor',
-                color='Métrica',
-                barmode='group', # Agrupa as barras lado a lado
-                text_auto='.2s',
-                title=f"Evolução Comparativa da Remuneração Individual para {empresa}",
+                df_plot, x='ANO_REFER', y='Valor', color='Métrica', barmode='group',
+                text_auto='.2s', title=f"Evolução Comparativa da Remuneração Individual para {empresa}",
                 labels={'ANO_REFER': 'Ano', 'Valor': 'Valor (R$)', 'Métrica': 'Tipo de Remuneração'}
             )
             fig.update_layout(xaxis_type='category')
             st.plotly_chart(fig, use_container_width=True)
         else:
-            st.info("Não há dados de remuneração individual (máxima, média, mínima) para exibir no período de 2022-2024 para esta seleção.")
+            st.info("Não há dados de remuneração individual para exibir no período de 2022-2024 para esta seleção.")
     else:
         st.warning("Nenhum dado encontrado para a combinação de filtros no período de 2022-2024.")
+
+    # --- NOVA ANÁLISE: GRÁFICO DE DISPERSÃO POR SETOR ---
+    st.markdown("---")
+    st.subheader("Dispersão da Remuneração no Setor")
+
+    col_scatter1, col_scatter2 = st.columns(2)
+    with col_scatter1:
+        ano_scatter = st.selectbox("Selecione o Ano para a Dispersão", sorted(df['ANO_REFER'].unique(), reverse=True), key='ano_scatter')
+    with col_scatter2:
+        metric_options = {'Máxima': 'REM_MAXIMA_INDIVIDUAL', 'Média': 'REM_MEDIA_INDIVIDUAL', 'Mínima': 'REM_MINIMA_INDIVIDUAL'}
+        metrica_selecionada = st.selectbox("Selecione a Métrica", list(metric_options.keys()), key='metrica_scatter')
+
+    # Filtra os dados para o gráfico de dispersão
+    # Usa o 'orgao' já selecionado na parte de cima da página
+    df_scatter = df[(df['ANO_REFER'] == ano_scatter) & (df['ORGAO_ADMINISTRACAO'] == orgao)]
+    
+    coluna_metrica = metric_options[metrica_selecionada]
+    df_scatter = df_scatter[df_scatter[coluna_metrica] > 0]
+
+    if not df_scatter.empty:
+        fig_scatter = px.scatter(
+            df_scatter,
+            x='NOME_COMPANHIA',
+            y=coluna_metrica,
+            size=coluna_metrica,
+            hover_name='NOME_COMPANHIA',
+            color='SETOR_ATIVIDADE',
+            title=f"Dispersão da Remuneração {metrica_selecionada} para o órgão '{orgao}' em {ano_scatter}",
+            labels={coluna_metrica: f"Remuneração {metrica_selecionada} (R$)", 'NOME_COMPANHIA': 'Empresa'}
+        )
+        fig_scatter.update_xaxes(tickangle=45, showticklabels=False) # Esconde os nomes no eixo X para não poluir
+        st.plotly_chart(fig_scatter, use_container_width=True)
+    else:
+        st.warning(f"Não há dados de Remuneração {metrica_selecionada} para exibir para os filtros selecionados.")
 
 
 def page_componentes_remuneracao(df: pd.DataFrame):
