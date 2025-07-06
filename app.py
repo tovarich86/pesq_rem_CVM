@@ -138,8 +138,16 @@ def format_year(year):
 
 def page_home():
     st.title("Análise Interativa de Remuneração de Administradores")
-    # Imagem temática para a página inicial
-    st.image("https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop", caption="Análise de Dados, Tecnologia e Governança")
+    
+    # --- AJUSTE DA IMAGEM ---
+    # A URL da imagem temática é adicionada aqui.
+    # O parâmetro 'width' controla o tamanho da imagem para que ela não ocupe a tela inteira.
+    st.image(
+        "https://storage.googleapis.com/gemini-prod/images/8472506b-586b-4395-97c0-264104d49a62",
+        width=800, # Ajuste este valor se desejar uma imagem maior ou menor
+        caption="Análise de Dados, Tecnologia e Governança"
+    )
+    
     st.markdown("""
     Esta ferramenta foi desenvolvida para permitir a análise interativa dos dados de remuneração de administradores de companhias abertas brasileiras, utilizando como base o arquivo de dados compilado e disponibilizado. A metodologia empregada busca replicar e expandir as análises apresentadas em pesquisas de mercado, como a do IBGC.
     """)
@@ -172,6 +180,7 @@ def page_home():
         3.  **Dados de 2025 são Projeções:** Os valores referentes ao ano de 2025 representam a **proposta de remuneração aprovada**, e não necessariamente o valor que será efetivamente pago.
         4.  **Arquivo CSV como Única Fonte:** O aplicativo depende exclusivamente do arquivo CSV fornecido. Quaisquer erros de compilação, extração ou tratamento prévio neste arquivo serão refletidos diretamente nas análises.
         """)
+
 
 def page_remuneracao_individual(df: pd.DataFrame):
     st.header("Análise da Remuneração Individual")
