@@ -27,7 +27,10 @@ def load_data(url: str) -> pd.DataFrame:
         pd.DataFrame: O DataFrame processado e pronto para uso.
     """
     try:
-        df = pd.read_csv(url)
+        # --- CORREÇÃO DO ERRO ---
+        # Adicionado sep=';' para corrigir o erro de tokenização, comum em CSVs brasileiros.
+        # Adicionado encoding='latin-1' para garantir a leitura correta de caracteres acentuados.
+        df = pd.read_csv(url, sep=';', encoding='latin-1')
 
         # --- Limpeza e Renomeação de Colunas ---
         # Padroniza os nomes das colunas para facilitar o acesso e a consistência com as funções
@@ -45,13 +48,15 @@ def load_data(url: str) -> pd.DataFrame:
         }, inplace=True)
 
         # --- Tratamento de Tipos e Nulos ---
-        # Converte colunas numéricas, preenchendo valores ausentes (NaN) com 0
         numeric_cols = [
             'TOTAL_REMUNERACAO_ORGAO', 'BONUS', 'NUM_MEMBROS_REMUNERADOS',
             'REM_FIXA', 'REM_VARIAVEL', 'REM_ACOES'
         ]
         for col in numeric_cols:
             if col in df.columns:
+                # --- CORREÇÃO DO FORMATO NUMÉRICO ---
+                # Converte os números do formato brasileiro (ex: 1.234,56) para o formato padrão (ex: 1234.56)
+                df[col] = df[col].astype(str).str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
                 df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
 
         # Garante que a coluna de ano seja do tipo inteiro
@@ -324,7 +329,7 @@ def main():
     
     # URL para o seu arquivo CSV no GitHub (substitua pelo seu link)
     # IMPORTANTE: Use o link para o arquivo "raw" (bruto)
-    github_url = "https://github.com/tovarich86/pesq_rem_CVM/blob/main/dados_cvm_mesclados%20(1)%20-%20dados_cvm_mesclados%20(1).csv.csv"
+    github_url = "https://raw.githubusercontent.com/tovarich86/Remunera-oxReceita/main/dados_cvm_mesclados%20(1)%20-%20dados_cvm_mesclados%20(1).csv.csv"
 
     df = load_data(github_url)
 
