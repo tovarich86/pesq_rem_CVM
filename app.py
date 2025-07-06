@@ -140,7 +140,11 @@ def page_remuneracao_individual(df: pd.DataFrame):
     # Filtros para selecionar órgão e empresa
     col1, col2 = st.columns(2)
     with col1:
-        orgao = st.selectbox("1. Selecione o Órgão", sorted(df['ORGAO_ADMINISTRACAO'].unique()), key='orgao_ind')
+        orgaos_disponiveis = sorted(df['ORGAO_ADMINISTRACAO'].unique())
+        default_index = 0
+        if 'DIRETORIA ESTATUTARIA' in orgaos_disponiveis:
+            default_index = orgaos_disponiveis.index('DIRETORIA ESTATUTARIA')
+        orgao = st.selectbox("1. Selecione o Órgão", orgaos_disponiveis, index=default_index, key='orgao_ind')
     
     df_orgao = df[df['ORGAO_ADMINISTRACAO'] == orgao]
     
@@ -254,22 +258,25 @@ def page_componentes_remuneracao(df: pd.DataFrame):
             empresa = st.selectbox("1. Selecione a Empresa", sorted(df['NOME_COMPANHIA'].unique()), key='empresa_comp_2')
         df_empresa = df[df['NOME_COMPANHIA'] == empresa]
         with col2:
-            orgao = st.selectbox("2. Selecione o Órgão", sorted(df_empresa['ORGAO_ADMINISTRACAO'].unique()), key='orgao_comp_2')
+            orgaos_disponiveis = sorted(df_empresa['ORGAO_ADMINISTRACAO'].unique())
+            default_index = 0
+            if 'DIRETORIA ESTATUTARIA' in orgaos_disponiveis:
+                default_index = orgaos_disponiveis.index('DIRETORIA ESTATUTARIA')
+            orgao = st.selectbox("2. Selecione o Órgão", orgaos_disponiveis, index=default_index, key='orgao_comp_2')
         with col3:
             calc_type = st.radio("Calcular por:", ["Total", "Média por Membro"], key='calc_type_2', horizontal=True)
 
         df_filtered = df_empresa[df_empresa['ORGAO_ADMINISTRACAO'] == orgao]
         yearly_data = df_filtered.groupby('ANO_REFER').agg({**{col: 'sum' for col in component_cols.values() if col in df.columns}, 'NUM_MEMBROS_TOTAL': 'first'}).reset_index()
         
+        yearly_data['Total'] = yearly_data[[col for col in component_cols.values() if col in yearly_data.columns]].sum(axis=1)
+
         if calc_type == "Média por Membro":
-            yearly_data['Total'] = yearly_data[[col for col in component_cols.values() if col in yearly_data.columns]].sum(axis=1)
             yearly_data = yearly_data[yearly_data['NUM_MEMBROS_TOTAL'] > 0]
             for col in component_cols.values():
                 if col in yearly_data.columns:
                     yearly_data[col] = yearly_data[col] / yearly_data['NUM_MEMBROS_TOTAL']
             yearly_data['Total'] = yearly_data['Total'] / yearly_data['NUM_MEMBROS_TOTAL']
-        else: # Total
-            yearly_data['Total'] = yearly_data[[col for col in component_cols.values() if col in yearly_data.columns]].sum(axis=1)
         
         df_plot = yearly_data.melt(id_vars=['ANO_REFER'], value_vars=[col for col in component_cols.values() if col in yearly_data.columns], var_name='Componente', value_name='Valor')
         df_plot = df_plot[df_plot['Valor'] > 0]
@@ -279,10 +286,15 @@ def page_componentes_remuneracao(df: pd.DataFrame):
             fig = px.bar(df_plot, x='ANO_REFER', y='Valor', color='Componente', title=f"Evolução dos Componentes para {empresa} ({orgao})", labels={'ANO_REFER': 'Ano', 'Valor': f'Valor {calc_type} (R$)'})
             fig.update_layout(xaxis_type='category', barmode='stack')
             
-            # Adiciona o totalizador
+            # Adiciona o totalizador com o número de membros (se aplicável)
             totals = yearly_data.set_index('ANO_REFER')['Total']
-            fig.add_trace(go.Scatter(x=totals.index, y=totals, text=[f"<b>R$ {val:,.0f}</b>" for val in totals], mode='text', textposition='top center', showlegend=False))
+            if calc_type == "Média por Membro":
+                membros = yearly_data.set_index('ANO_REFER')['NUM_MEMBROS_TOTAL']
+                labels = [f"<b>R$ {total:,.0f}</b><br>({membro:.0f} membros)" for total, membro in zip(totals, membros)]
+            else:
+                labels = [f"<b>R$ {val:,.0f}</b>" for val in totals]
             
+            fig.add_trace(go.Scatter(x=totals.index, y=totals, text=labels, mode='text', textposition='top center', showlegend=False))
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("Não há dados para exibir para a seleção atual.")
@@ -293,7 +305,11 @@ def page_componentes_remuneracao(df: pd.DataFrame):
         with col1:
             ano = st.selectbox("1. Selecione o Ano", sorted(df['ANO_REFER'].unique(), reverse=True), key='ano_comp_3')
         with col2:
-            orgao = st.selectbox("2. Selecione o Órgão", sorted(df['ORGAO_ADMINISTRACAO'].unique()), key='orgao_comp_3')
+            orgaos_disponiveis = sorted(df['ORGAO_ADMINISTRACAO'].unique())
+            default_index = 0
+            if 'DIRETORIA ESTATUTARIA' in orgaos_disponiveis:
+                default_index = orgaos_disponiveis.index('DIRETORIA ESTATUTARIA')
+            orgao = st.selectbox("2. Selecione o Órgão", orgaos_disponiveis, index=default_index, key='orgao_comp_3')
         
         rank_options = {'Remuneração Total': 'TOTAL_REMUNERACAO_ORGAO', **component_cols}
         with col3:
@@ -331,7 +347,6 @@ def page_bonus_plr(df: pd.DataFrame):
     
     with col2:
         orgaos_disponiveis = sorted(df_empresa['ORGAO_ADMINISTRACAO'].unique())
-        # Tenta definir 'DIRETORIA ESTATUTARIA' como padrão
         default_index = 0
         if 'DIRETORIA ESTATUTARIA' in orgaos_disponiveis:
             default_index = orgaos_disponiveis.index('DIRETORIA ESTATUTARIA')
