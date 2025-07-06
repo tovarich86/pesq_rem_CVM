@@ -521,9 +521,7 @@ def main():
     # 1. Carregue os dados USANDO APENAS a sua função de processamento.
     df_original = load_data(github_url)
 
-    # 2. REMOVA a leitura redundante e a renomeação manual que causavam o erro.
-    df_original = pd.read_csv(github_url, sep=',', encoding='utf-8-sig', engine='python') # <<-- REMOVER
-    df_original.rename(columns={'ATIVIDADE': 'SETOR_'}, inplace=True) # <<-- REMOVER
+    
 
     if df_original.empty:
         st.error("Falha no carregamento dos dados. O aplicativo não pode continuar.")
