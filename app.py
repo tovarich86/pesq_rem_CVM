@@ -81,7 +81,7 @@ def load_data(url: str) -> pd.DataFrame:
         if 'SETOR_ATIVIDADE' not in df.columns and len(df.columns) >= 42:
             target_col_name = df.columns[41] # Posição 42 é índice 41
             df.rename(columns={target_col_name: 'SETOR_ATIVIDADE'}, inplace=True)
-            st.sidebar.success(f"Coluna de atividade ('{target_col_name}') encontrada pela posição.")
+            
 
         # Converte todas as colunas numéricas de uma vez
         all_numeric_cols = list(rename_map.keys())
@@ -450,8 +450,8 @@ def page_estatisticas_quartis(df: pd.DataFrame):
     df_filtered = df_filtered[df_filtered[col_metrica] > 0]
     
     if not df_filtered.empty:
-        st.subheader(f"Estatísticas por Setor de Atividade ({format_year(ano)})")
-        df_stats_sector = df_filtered.groupby('SETOR_ATIVIDADE')[col_metrica].describe().reset_index()
+        st.subheader(f"Estatísticas por Setor de  ({format_year(ano)})")
+        df_stats_sector = df_filtered.groupby('SETOR_')[col_metrica].describe().reset_index()
         df_stats_sector = df_stats_sector.rename(columns={'count': 'Nº de Companhias', 'mean': 'Média', 'std': 'Desvio Padrão', 'min': 'Mínimo', '25%': '1º Quartil', '50%': 'Mediana (2º Q)', '75%': '3º Quartil', 'max': 'Máximo'})
         st.dataframe(df_stats_sector.style.format({'Nº de Companhias': '{:,.0f}', 'Média': 'R$ {:,.2f}', 'Desvio Padrão': 'R$ {:,.2f}', 'Mínimo': 'R$ {:,.2f}', '1º Quartil': 'R$ {:,.2f}', 'Mediana (2º Q)': 'R$ {:,.2f}', '3º Quartil': 'R$ {:,.2f}', 'Máximo': 'R$ {:,.2f}'}))
         create_download_button(df_stats_sector, f"estatisticas_setor_{ano}_{orgao}")
@@ -477,8 +477,8 @@ def main():
     
     ufs_disponiveis = ["TODAS"] + sorted(df_original['UF_SEDE'].unique())
     uf = st.sidebar.selectbox("UF da Sede", ufs_disponiveis)
-    setores_disponiveis = ["TODOS"] + sorted(df_original['SETOR_ATIVIDADE'].unique())
-    setor = st.sidebar.selectbox("Setor de Atividade", setores_disponiveis)
+    setores_disponiveis = ["TODOS"] + sorted(df_original['SETOR_'].unique())
+    setor = st.sidebar.selectbox("Setor de ", setores_disponiveis)
     controles_disponiveis = ["TODOS"] + sorted(df_original['CONTROLE_ACIONARIO'].unique())
     controle = st.sidebar.selectbox("Controle Acionário", controles_disponiveis)
 
@@ -486,7 +486,7 @@ def main():
     if uf != "TODAS":
         df_filtrado = df_filtrado[df_filtrado['UF_SEDE'] == uf]
     if setor != "TODOS":
-        df_filtrado = df_filtrado[df_filtrado['SETOR_ATIVIDADE'] == setor]
+        df_filtrado = df_filtrado[df_filtrado['SETOR_'] == setor]
     if controle != "TODOS":
         df_filtrado = df_filtrado[df_filtrado['CONTROLE_ACIONARIO'] == controle]
 
