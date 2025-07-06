@@ -138,6 +138,7 @@ def format_year(year):
 
 def page_home():
     st.title("Análise Interativa de Remuneração de Administradores")
+    st.image("https://images.unsplash.com/photo-1665686306574-1ace09918530?q=80&w=2070&auto=format&fit=crop", use_column_width=True)
     st.markdown("""
     Esta ferramenta foi desenvolvida para permitir a análise interativa dos dados de remuneração de administradores de companhias abertas brasileiras, utilizando como base o arquivo de dados compilado e disponibilizado. A metodologia empregada busca replicar e expandir as análises apresentadas em pesquisas de mercado, como a do IBGC.
     """)
@@ -280,11 +281,13 @@ def page_componentes_remuneracao(df: pd.DataFrame):
         df_plot = df_plot[df_plot['Valor'] > 0]
         df_plot['Componente'] = df_plot['Componente'].map({v: k for k, v in component_cols.items()})
         if not df_plot.empty:
-            fig = px.bar(df_plot, x='ANO_REFER', y='Valor', color='Componente', title=f"Evolução dos Componentes para {empresa} ({orgao})", labels={'ANO_REFER': 'Ano', 'Valor': f'Valor {calc_type} (R$)'})
+            yearly_data['ANO_REFER_FORMATTED'] = yearly_data['ANO_REFER'].apply(format_year)
+            df_plot = pd.merge(df_plot, yearly_data[['ANO_REFER', 'ANO_REFER_FORMATTED']], on='ANO_REFER')
+            fig = px.bar(df_plot, x='ANO_REFER_FORMATTED', y='Valor', color='Componente', title=f"Evolução dos Componentes para {empresa} ({orgao})", labels={'ANO_REFER_FORMATTED': 'Ano', 'Valor': f'Valor {calc_type} (R$)'})
             fig.update_layout(xaxis_type='category', barmode='stack')
-            totals = yearly_data.set_index('ANO_REFER')['Total']
+            totals = yearly_data.set_index('ANO_REFER_FORMATTED')['Total']
             if calc_type == "Média por Membro":
-                membros = yearly_data.set_index('ANO_REFER')['NUM_MEMBROS_TOTAL']
+                membros = yearly_data.set_index('ANO_REFER_FORMATTED')['NUM_MEMBROS_TOTAL']
                 labels = [f"<b>R$ {total:,.0f}</b><br>({membro:.0f} membros)" for total, membro in zip(totals, membros)]
             else:
                 labels = [f"<b>R$ {val:,.0f}</b>" for val in totals]
@@ -350,7 +353,8 @@ def page_bonus_plr(df: pd.DataFrame):
     df_plot['Tipo'] = df_plot['Métrica'].apply(lambda x: 'Bônus' if 'BONUS' in x else 'PLR')
     df_plot['Métrica'] = df_plot['Métrica'].map({v: k for k, v in bonus_cols.items()})
     if not df_plot.empty:
-        fig = px.bar(df_plot, x='ANO_REFER', y='Valor', color='Métrica', barmode='group', facet_col='Tipo', title=f"Evolução de Bônus e PLR para {empresa} ({orgao})", labels={'ANO_REFER': 'Ano', 'Valor': f'Valor {calc_type} (R$)'})
+        df_plot['ANO_REFER_FORMATTED'] = df_plot['ANO_REFER'].apply(format_year)
+        fig = px.bar(df_plot, x='ANO_REFER_FORMATTED', y='Valor', color='Métrica', barmode='group', facet_col='Tipo', title=f"Evolução de Bônus e PLR para {empresa} ({orgao})", labels={'ANO_REFER_FORMATTED': 'Ano', 'Valor': f'Valor {calc_type} (R$)'})
         fig.update_xaxes(type='category')
         st.plotly_chart(fig, use_container_width=True)
         create_download_button(df_plot, f"evolucao_bonus_plr_{empresa}_{orgao}")
@@ -420,8 +424,24 @@ def page_estatisticas_quartis(df: pd.DataFrame):
     with col3:
         metrica = st.selectbox("3. Selecione a Métrica", list(metric_options.keys()), key='metrica_quartil')
     
+    calc_type = st.radio("Calcular por:", ["Total", "Média por Membro"], key='calc_type_quartil', horizontal=True)
+    
     col_metrica = metric_options[metrica]
-    df_filtered = df[(df['ANO_REFER'] == ano) & (df['ORGAO_ADMINISTRACAO'] == orgao) & (df[col_metrica] > 0)]
+    df_filtered = df[(df['ANO_REFER'] == ano) & (df['ORGAO_ADMINISTRACAO'] == orgao)]
+    
+    # Define a coluna de membros correta para o cálculo da média
+    if metrica in ['Bônus Pago']:
+        membros_col = 'NUM_MEMBROS_BONUS_PLR'
+    elif metrica in ['Remuneração Máxima', 'Remuneração Média', 'Remuneração Mínima']:
+        membros_col = 'NUM_MEMBROS_INDIVIDUAL'
+    else:
+        membros_col = 'NUM_MEMBROS_TOTAL'
+        
+    if calc_type == "Média por Membro":
+        df_filtered = df_filtered[df_filtered[membros_col] > 0]
+        df_filtered[col_metrica] = df_filtered[col_metrica] / df_filtered[membros_col]
+        
+    df_filtered = df_filtered[df_filtered[col_metrica] > 0]
     
     if not df_filtered.empty:
         st.subheader(f"Estatísticas por Setor de Atividade ({format_year(ano)})")
