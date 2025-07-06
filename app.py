@@ -130,56 +130,64 @@ def page_home():
     """)
 
 def page_remuneracao_individual(df: pd.DataFrame):
-    st.header("Análise da Remuneração Individual (Máxima, Média e Mínima)")
+    st.header("Análise Comparativa da Remuneração Individual (2022-2024)")
     
-    col1, col2, col3 = st.columns(3)
+    # Filtros para selecionar órgão e empresa
+    col1, col2 = st.columns(2)
     with col1:
-        ano = st.selectbox("1. Selecione o Ano", sorted(df['ANO_REFER'].unique(), reverse=True), key='ano_ind')
-    df_ano = df[df['ANO_REFER'] == ano]
+        orgao = st.selectbox("1. Selecione o Órgão", sorted(df['ORGAO_ADMINISTRACAO'].unique()), key='orgao_ind')
+    
+    df_orgao = df[df['ORGAO_ADMINISTRACAO'] == orgao]
+    
     with col2:
-        orgaos_disponiveis = sorted(df_ano['ORGAO_ADMINISTRACAO'].unique())
-        orgao = st.selectbox("2. Selecione o Órgão", orgaos_disponiveis, key='orgao_ind')
-    df_orgao = df_ano[df_ano['ORGAO_ADMINISTRACAO'] == orgao]
-    with col3:
         empresas_disponiveis = sorted(df_orgao['NOME_COMPANHIA'].unique())
         if not empresas_disponiveis:
-            st.warning("Nenhuma empresa encontrada para os filtros selecionados.")
+            st.warning("Nenhuma empresa encontrada para o órgão selecionado.")
             st.stop()
-        empresa = st.selectbox("3. Selecione a Empresa", empresas_disponiveis, key='empresa_ind')
+        empresa = st.selectbox("2. Selecione a Empresa", empresas_disponiveis, key='empresa_ind')
 
-    df_filtered = df_orgao[df_orgao['NOME_COMPANHIA'] == empresa]
+    # Filtra para a empresa e órgão selecionados, e apenas para os anos com dados reais (2022-2024)
+    df_filtered = df_orgao[(df_orgao['NOME_COMPANHIA'] == empresa) & (df_orgao['ANO_REFER'].isin([2022, 2023, 2024]))]
+    
     if not df_filtered.empty:
-        rem_max = df_filtered['REM_MAXIMA_INDIVIDUAL'].iloc[0]
-        rem_med = df_filtered['REM_MEDIA_INDIVIDUAL'].iloc[0]
-        rem_min = df_filtered['REM_MINIMA_INDIVIDUAL'].iloc[0]
+        # Seleciona as colunas relevantes para a análise
+        df_analysis = df_filtered[['ANO_REFER', 'REM_MAXIMA_INDIVIDUAL', 'REM_MEDIA_INDIVIDUAL', 'REM_MINIMA_INDIVIDUAL']]
         
-        # Lógica de verificação aprimorada
-        if rem_max > 0:
-            data_plot = pd.DataFrame({'Métrica': ['Máxima', 'Média', 'Mínima'], 'Valor': [rem_max, rem_med, rem_min]})
-            fig = px.bar(data_plot, x='Métrica', y='Valor', text_auto='.2s', title=f"Dispersão da Remuneração Individual em {ano}", labels={'Valor': 'Valor (R$)'})
+        # Transforma os dados do formato 'largo' para 'longo' para facilitar a plotagem
+        df_plot = df_analysis.melt(id_vars=['ANO_REFER'], 
+                                   value_vars=['REM_MAXIMA_INDIVIDUAL', 'REM_MEDIA_INDIVIDUAL', 'REM_MINIMA_INDIVIDUAL'],
+                                   var_name='Métrica', 
+                                   value_name='Valor')
+        
+        # Mapeia os nomes técnicos para nomes amigáveis
+        metric_names = {
+            'REM_MAXIMA_INDIVIDUAL': 'Máxima',
+            'REM_MEDIA_INDIVIDUAL': 'Média',
+            'REM_MINIMA_INDIVIDUAL': 'Mínima'
+        }
+        df_plot['Métrica'] = df_plot['Métrica'].map(metric_names)
+
+        # Remove valores zero para não poluir o gráfico
+        df_plot = df_plot[df_plot['Valor'] > 0]
+
+        if not df_plot.empty:
+            fig = px.bar(
+                df_plot,
+                x='ANO_REFER',
+                y='Valor',
+                color='Métrica',
+                barmode='group', # Agrupa as barras lado a lado
+                text_auto='.2s',
+                title=f"Evolução Comparativa da Remuneração Individual para {empresa}",
+                labels={'ANO_REFER': 'Ano', 'Valor': 'Valor (R$)', 'Métrica': 'Tipo de Remuneração'}
+            )
+            fig.update_layout(xaxis_type='category')
             st.plotly_chart(fig, use_container_width=True)
         else:
-            # Mensagem mais informativa se os dados forem zero
-            st.info("Os dados de remuneração individual (máxima, média, mínima) não foram informados ou encontrados no arquivo para esta seleção.")
-            with st.expander("Ajuda para depuração"):
-                st.write("""
-                **Causa Provável:** O aplicativo não encontrou as colunas com os dados de remuneração individual no arquivo CSV. Isso geralmente acontece se os nomes das colunas no arquivo não corresponderem exatamente ao esperado.
-
-                **O que verificar:**
-                1.  Abra o arquivo `dados_cvm_mesclados.csv.csv`.
-                2.  Procure pelas colunas que contêm a remuneração máxima, média e mínima.
-                3.  O aplicativo procura por nomes como:
-                    - `Valor_Maior_Remuneracao_Individual_Reconhecida_Exercicio`
-                    - `VALOR_MAIOR_REMUNERACAO`
-                    - `Valor_Medio_Remuneracao_Individual_Reconhecida_Exercicio`
-                    - `VALOR_MEDIO_REMUNERACAO`
-                    - `Valor_Menor_Remuneracao_Individual_Reconhecida_Exercicio`
-                    - `VALOR_MENOR_REMUNERACAO`
-                
-                Se os nomes no seu arquivo forem diferentes, o aplicativo não conseguirá ler os dados.
-                """)
+            st.info("Não há dados de remuneração individual (máxima, média, mínima) para exibir no período de 2022-2024 para esta seleção.")
     else:
-        st.warning("Nenhum dado encontrado para a combinação de filtros.")
+        st.warning("Nenhum dado encontrado para a combinação de filtros no período de 2022-2024.")
+
 
 def page_componentes_remuneracao(df: pd.DataFrame):
     st.header("Análise dos Componentes da Remuneração Total")
