@@ -21,7 +21,7 @@ def load_data(url: str) -> pd.DataFrame:
     """
     try:
         # CORREÇÃO DE ACENTUAÇÃO: Alterado encoding para utf-8-sig
-        df = pd.read_csv(, sep=',', encoding='utf-8-sig', engine='python')
+        df = pd.read_csv(url, sep=',', encoding='utf-8-sig', engine='python')
         df.columns = df.columns.str.strip()
 
         # Mapeamento completo e flexível das colunas para nomes padronizados.
