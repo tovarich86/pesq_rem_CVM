@@ -143,16 +143,14 @@ def page_home():
     # A URL foi atualizada para uma imagem com tema similar e proporção de banner.
     # use_container_width=True garante que a imagem se ajuste à largura da tela,
     # funcionando bem em qualquer dispositivo.
-    st.image(
-        "https://raw.githubusercontent.com/tovarich86/pesq_rem_CVM/main/Gemini_Generated_Image_k75a3hk75a3hk75a.png")    
     st.markdown("""
-    Esta ferramenta foi desenvolvida para permitir a análise interativa dos dados de remuneração de administradores de companhias abertas brasileiras, utilizando como base o arquivo de dados compilado e disponibilizado. A metodologia empregada busca replicar e expandir as análises apresentadas em pesquisas de mercado, como a do IBGC.
+    Esta ferramenta foi desenvolvida para permitir a análise interativa dos dados de remuneração de administradores de companhias abertas brasileiras, utilizando como base o arquivo de dados compilado e disponibilizado. A metodologia empregada busca replicar e expandir as análises apresentadas em pesquisas de mercado.
     """)
     with st.expander("Clique para ver a Metodologia, Limitações e Fórmulas"):
         st.subheader("Metodologia")
         st.markdown("""
         **1. Fonte e Coleta de Dados:**
-        * **Fonte Primária:** Os dados são carregados diretamente do arquivo `dados_cvm_mesclados.csv.csv` hospedado no repositório GitHub `tovarich86/pesq_rem_CVM`. A aplicação assume que este arquivo é uma compilação de diferentes formulários da CVM (Comissão de Valores Mobiliários), como o Formulário de Referência (FRE).
+        * **Fonte Primária:** Os dados são carregados diretamente do arquivo hospedado no repositório GitHub `tovarich86/pesq_rem_CVM`. Este arquivo é uma compilação de diferentes formulários , como o Formulário de Referência (FRE).
         * **Estrutura dos Dados:** A análise respeita a estrutura de blocos de dados descrita:
             * Remuneração Individual (Máxima, Média e Mínima).
             * Componentes da Remuneração Total (Fixa e Variável).
@@ -475,7 +473,6 @@ def main():
         st.stop()
 
     st.sidebar.title("Painel de Análise")
-    st.sidebar.image("https://www.ibgc.org.br/themes/ibgc/dist/images/logo-default.svg", width=150)
     st.sidebar.header("Filtros Globais")
     
     ufs_disponiveis = ["TODAS"] + sorted(df_original['UF_SEDE'].unique())
