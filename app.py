@@ -150,11 +150,11 @@ def page_home():
         st.subheader("Metodologia")
         st.markdown("""
         **1. Fonte e Coleta de Dados:**
-        * **Fonte Primária:** Os dados são carregados diretamente do arquivo hospedado no repositório GitHub `tovarich86/pesq_rem_CVM`. Este arquivo é uma compilação de diferentes formulários , como o Formulário de Referência (FRE).
+        * **Fonte Primária:** Formulário de Referência (FRE).
         * **Estrutura dos Dados:** A análise respeita a estrutura de blocos de dados descrita:
-            * Remuneração Individual (Máxima, Média e Mínima).
-            * Componentes da Remuneração Total (Fixa e Variável).
-            * Métricas de Bônus e PLR (Alvo, Pago, etc.).
+            * Remuneração Individual (Máxima, Média e Mínima) Fonte item 8.15 FRE .
+            * Componentes da Remuneração Total (Fixa e Variável). Fonte item 8.2 FRE.
+            * Métricas de Bônus e PLR (Alvo, Pago, etc.) Fonte Item 8.3 FRE.
 
         **2. Tratamento e Limpeza dos Dados:**
         * **Padronização de Nomes:** Ao carregar, o aplicativo renomeia as colunas do arquivo para um formato padronizado, garantindo a resiliência do código a pequenas variações nos nomes das colunas.
