@@ -517,7 +517,7 @@ def page_estatisticas_quartis(df: pd.DataFrame):
 # --- Função Principal da Aplicação ---
 # --- Função Principal da Aplicação ---
 def main():
-    github_ = "https://raw.githubusercontent.com/tovarich86/pesq_rem_CVM/main/dados_cvm_mesclados.csv"
+    github_url = "https://raw.githubusercontent.com/tovarich86/pesq_rem_CVM/main/dados_cvm_mesclados.csv"
     # 1. Carregue os dados USANDO APENAS a sua função de processamento.
     df_original = load_data(github_url)
 
