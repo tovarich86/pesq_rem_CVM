@@ -119,7 +119,8 @@ def get_default_index(options_list, default_value):
 def create_download_button(df, filename):
     """Cria um botão de download para um DataFrame em formato Excel."""
     output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+    # CORREÇÃO DO ERRO DE DOWNLOAD: Alterado engine para 'openpyxl'
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Dados')
     processed_data = output.getvalue()
     st.download_button(
@@ -128,6 +129,10 @@ def create_download_button(df, filename):
         file_name=f"{filename}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
+def format_year(year):
+    """Adiciona '(projeção)' ao ano de 2025."""
+    return f"{year} (projeção)" if year == 2025 else str(year)
 
 # --- PÁGINAS DA APLICAÇÃO ---
 
@@ -213,7 +218,7 @@ def page_remuneracao_individual(df: pd.DataFrame):
     df_bar = df_bar[df_bar[coluna_metrica] > 0]
     df_top_companies = df_bar.nlargest(15, coluna_metrica)
     if not df_top_companies.empty:
-        fig_bar = px.bar(df_top_companies.sort_values(by=coluna_metrica), x=coluna_metrica, y='NOME_COMPANHIA', orientation='h', text_auto='.2s', title=f"Top 15 Empresas por Remuneração {metrica_selecionada} ({orgao}, {ano_bar})", labels={coluna_metrica: f"Remuneração {metrica_selecionada} (R$)", 'NOME_COMPANHIA': 'Empresa'})
+        fig_bar = px.bar(df_top_companies.sort_values(by=coluna_metrica), x=coluna_metrica, y='NOME_COMPANHIA', orientation='h', text_auto='.2s', title=f"Top 15 Empresas por Remuneração {metrica_selecionada} ({orgao}, {format_year(ano_bar)})", labels={coluna_metrica: f"Remuneração {metrica_selecionada} (R$)", 'NOME_COMPANHIA': 'Empresa'})
         fig_bar.update_layout(yaxis={'categoryorder':'total ascending'})
         st.plotly_chart(fig_bar, use_container_width=True)
         create_download_button(df_top_companies[['NOME_COMPANHIA', coluna_metrica]], f"ranking_rem_individual_{ano_bar}")
@@ -241,7 +246,7 @@ def page_componentes_remuneracao(df: pd.DataFrame):
             df_plot = df_grouped.drop(columns='Total').reset_index().melt(id_vars='ORGAO_ADMINISTRACAO', var_name='Componente', value_name='Valor')
             df_plot = df_plot[df_plot['Valor'] > 0]
             df_plot['Componente'] = df_plot['Componente'].map({v: k for k, v in component_cols.items()})
-            fig = px.bar(df_plot, x='ORGAO_ADMINISTRACAO', y='Valor', color='Componente', title=f"Composição da Remuneração por Órgão para {empresa} em {ano}", labels={'ORGAO_ADMINISTRACAO': 'Órgão', 'Valor': 'Valor (R$)'})
+            fig = px.bar(df_plot, x='ORGAO_ADMINISTRACAO', y='Valor', color='Componente', title=f"Composição da Remuneração por Órgão para {empresa} em {format_year(ano)}", labels={'ORGAO_ADMINISTRACAO': 'Órgão', 'Valor': 'Valor (R$)'})
             fig.update_layout(barmode='stack')
             totals = df_grouped['Total']
             fig.add_trace(go.Scatter(x=totals.index, y=totals, text=[f"<b>R$ {val:,.0f}</b>" for val in totals], mode='text', textposition='top center', showlegend=False))
@@ -312,7 +317,7 @@ def page_componentes_remuneracao(df: pd.DataFrame):
             df_agg[col_rank] = df_agg['Valor'] / df_agg['Membros']
             df_rank = df_agg.nlargest(15, col_rank)
         if not df_rank.empty and df_rank[col_rank].sum() > 0:
-            fig = px.bar(df_rank.sort_values(by=col_rank), x=col_rank, y='NOME_COMPANHIA', orientation='h', text_auto='.2s', title=f"Top 15 Empresas por {rank_metric_name} ({calc_type})")
+            fig = px.bar(df_rank.sort_values(by=col_rank), x=col_rank, y='NOME_COMPANHIA', orientation='h', text_auto='.2s', title=f"Top 15 Empresas por {rank_metric_name} ({calc_type}) em {format_year(ano)}")
             fig.update_layout(yaxis={'categoryorder':'total ascending'}, xaxis_title=f"Valor {calc_type} (R$)", yaxis_title="Empresa")
             st.plotly_chart(fig, use_container_width=True)
             create_download_button(df_rank, f"ranking_componentes_{ano}_{orgao}")
@@ -353,7 +358,7 @@ def page_bonus_plr(df: pd.DataFrame):
         perf_cols = st.columns(len(yearly_data))
         for i, row in yearly_data.iterrows():
             with perf_cols[i]:
-                st.write(f"**{row['ANO_REFER']}**")
+                st.write(f"**{format_year(row['ANO_REFER'])}**")
                 if row.get('BONUS_ALVO', 0) > 0:
                     perc_bonus = (row.get('BONUS_PAGO', 0) / row['BONUS_ALVO']) * 100
                     st.metric(label="Bônus", value=f"{perc_bonus:.1f}%")
@@ -364,7 +369,7 @@ def page_bonus_plr(df: pd.DataFrame):
         perf_max_cols = st.columns(len(yearly_data))
         for i, row in yearly_data.iterrows():
             with perf_max_cols[i]:
-                st.write(f"**{row['ANO_REFER']}**")
+                st.write(f"**{format_year(row['ANO_REFER'])}**")
                 if row.get('BONUS_ALVO', 0) > 0:
                     perc_bonus_max = (row.get('BONUS_MAX', 0) / row['BONUS_ALVO']) * 100
                     st.metric(label="Bônus (Máximo vs Alvo)", value=f"{perc_bonus_max:.1f}%")
@@ -392,7 +397,7 @@ def page_bonus_plr(df: pd.DataFrame):
         df_agg[col_rank] = df_agg['Valor'] / df_agg['Membros']
         df_rank = df_agg.nlargest(15, col_rank)
     if not df_rank.empty and df_rank[col_rank].sum() > 0:
-        fig_rank = px.bar(df_rank.sort_values(by=col_rank), x=col_rank, y='NOME_COMPANHIA', orientation='h', text_auto='.2s', title=f"Top 15 Empresas por {rank_metric_name} ({calc_type_rank})")
+        fig_rank = px.bar(df_rank.sort_values(by=col_rank), x=col_rank, y='NOME_COMPANHIA', orientation='h', text_auto='.2s', title=f"Top 15 Empresas por {rank_metric_name} ({calc_type_rank}) em {format_year(ano_rank)}")
         fig_rank.update_layout(yaxis={'categoryorder':'total ascending'}, xaxis_title=f"Valor {calc_type_rank} (R$)", yaxis_title="Empresa")
         st.plotly_chart(fig_rank, use_container_width=True)
         create_download_button(df_rank, f"ranking_bonus_plr_{ano_rank}")
@@ -419,14 +424,17 @@ def page_estatisticas_quartis(df: pd.DataFrame):
     df_filtered = df[(df['ANO_REFER'] == ano) & (df['ORGAO_ADMINISTRACAO'] == orgao) & (df[col_metrica] > 0)]
     
     if not df_filtered.empty:
-        df_stats = df_filtered.groupby('SETOR_ATIVIDADE')[col_metrica].describe().reset_index()
-        df_stats = df_stats.rename(columns={'count': 'Nº de Companhias', 'mean': 'Média', 'std': 'Desvio Padrão', 'min': 'Mínimo', '25%': '1º Quartil', '50%': 'Mediana (2º Q)', '75%': '3º Quartil', 'max': 'Máximo'})
-        
-        st.dataframe(df_stats.style.format({
-            'Nº de Companhias': '{:,.0f}', 'Média': 'R$ {:,.2f}', 'Desvio Padrão': 'R$ {:,.2f}', 'Mínimo': 'R$ {:,.2f}',
-            '1º Quartil': 'R$ {:,.2f}', 'Mediana (2º Q)': 'R$ {:,.2f}', '3º Quartil': 'R$ {:,.2f}', 'Máximo': 'R$ {:,.2f}'
-        }))
-        create_download_button(df_stats, f"estatisticas_quartis_{ano}_{orgao}")
+        st.subheader(f"Estatísticas por Setor de Atividade ({format_year(ano)})")
+        df_stats_sector = df_filtered.groupby('SETOR_ATIVIDADE')[col_metrica].describe().reset_index()
+        df_stats_sector = df_stats_sector.rename(columns={'count': 'Nº de Companhias', 'mean': 'Média', 'std': 'Desvio Padrão', 'min': 'Mínimo', '25%': '1º Quartil', '50%': 'Mediana (2º Q)', '75%': '3º Quartil', 'max': 'Máximo'})
+        st.dataframe(df_stats_sector.style.format({'Nº de Companhias': '{:,.0f}', 'Média': 'R$ {:,.2f}', 'Desvio Padrão': 'R$ {:,.2f}', 'Mínimo': 'R$ {:,.2f}', '1º Quartil': 'R$ {:,.2f}', 'Mediana (2º Q)': 'R$ {:,.2f}', '3º Quartil': 'R$ {:,.2f}', 'Máximo': 'R$ {:,.2f}'}))
+        create_download_button(df_stats_sector, f"estatisticas_setor_{ano}_{orgao}")
+
+        st.subheader(f"Estatísticas para a Amostra Total Filtrada ({format_year(ano)})")
+        df_stats_total = df_filtered[col_metrica].describe().to_frame().T
+        df_stats_total = df_stats_total.rename(columns={'count': 'Nº de Companhias', 'mean': 'Média', 'std': 'Desvio Padrão', 'min': 'Mínimo', '25%': '1º Quartil', '50%': 'Mediana (2º Q)', '75%': '3º Quartil', 'max': 'Máximo'})
+        st.dataframe(df_stats_total.style.format({'Nº de Companhias': '{:,.0f}', 'Média': 'R$ {:,.2f}', 'Desvio Padrão': 'R$ {:,.2f}', 'Mínimo': 'R$ {:,.2f}', '1º Quartil': 'R$ {:,.2f}', 'Mediana (2º Q)': 'R$ {:,.2f}', '3º Quartil': 'R$ {:,.2f}', 'Máximo': 'R$ {:,.2f}'}))
+        create_download_button(df_stats_total, f"estatisticas_total_{ano}_{orgao}")
     else:
         st.warning("Não há dados para gerar a tabela de quartis para a seleção atual.")
 
