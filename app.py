@@ -44,11 +44,9 @@ def load_data(url: str) -> pd.DataFrame:
             'REM_FIXA_POS_EMPREGO': ['Beneficios_Pos_Emprego_Anual_Total'],
             'REM_FIXA_RESCISAO': ['Beneficios_Cessacao_Cargo_Anual_Total'],
             'REM_FIXA_OUTROS': ['Outros_Valores_Remuneracao_Fixa_Anual_Total'],
-            'TOTAL_REM_FIXA': ['Valor_Total_Remuneracao_Fixa_Anual_Orgao'],
             'REM_VAR_BONUS_PLR': ['Bonus_Participacao_Resultados_Anual_Total'],
             'REM_VAR_ACOES': ['Remuneracao_Baseada_Acoes_Anual_Total'],
             'REM_VAR_OUTROS': ['Outros_Valores_Remuneracao_Variavel_Anual_Total'],
-            'TOTAL_REM_VARIAVEL': ['Remuneracao_Variavel_Anual_Total'],
             'TOTAL_REMUNERACAO_ORGAO': ['Valor_Total_Remuneracao_Anual_Orgao'],
 
             # Bloco 3: Métricas de Bônus e PLR (Colunas AG-AO)
@@ -72,6 +70,20 @@ def load_data(url: str) -> pd.DataFrame:
             if col in df.columns:
                  if 'NUM' in col or 'VALOR' in col or 'TOTAL' in col or 'REM' in col or 'PERC' in col:
                     df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+
+        # --- CORREÇÃO ROBUSTA: Cálculo dos Totais ---
+        # Calcula os totais somando os componentes para garantir que as colunas existam,
+        # resolvendo o KeyError de forma definitiva.
+        fixed_rem_components = ['REM_FIXA_SALARIO', 'REM_FIXA_BENEFICIOS', 'REM_FIXA_POS_EMPREGO', 'REM_FIXA_RESCISAO', 'REM_FIXA_OUTROS']
+        variable_rem_components = ['REM_VAR_BONUS_PLR', 'REM_VAR_ACOES', 'REM_VAR_OUTROS']
+        
+        # Garante que as colunas de componentes existam antes de somar
+        for component_col in fixed_rem_components + variable_rem_components:
+            if component_col not in df.columns:
+                df[component_col] = 0 # Cria a coluna com zeros se não existir
+
+        df['TOTAL_REM_FIXA'] = df[fixed_rem_components].sum(axis=1)
+        df['TOTAL_REM_VARIAVEL'] = df[variable_rem_components].sum(axis=1)
 
         if 'ANO_REFER' in df.columns:
             df['ANO_REFER'] = pd.to_numeric(df['ANO_REFER'], errors='coerce').dropna().astype(int)
