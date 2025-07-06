@@ -27,7 +27,7 @@ def load_data(url: str) -> pd.DataFrame:
             'NOME_COMPANHIA': ['DENOM_CIA'],
             'ANO_REFER': ['Ano do Exercício Social'],
             'ORGAO_ADMINISTRACAO': ['Orgao_Administracao'],
-            'SETOR_ATIVIDADE': ['SETOR_DE_ATIVDADE'],
+            'SETOR_ATIVIDADE': ['ATIVDADE'],
             'CONTROLE_ACIONARIO': ['CONTROLE_ACIONARIO'],
             'UF_SEDE': ['UF_SEDE'],
             
