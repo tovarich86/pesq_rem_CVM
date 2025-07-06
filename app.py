@@ -28,16 +28,16 @@ def load_data(url: str) -> pd.DataFrame:
             'NOME_COMPANHIA': ['DENOM_CIA'],
             'ANO_REFER': ['Ano do Exercício Social'],
             'ORGAO_ADMINISTRACAO': ['Orgao_Administracao'],
-            'SETOR_ATIVIDADE': ['Setor de ativdade', 'Setor de Atividade'],
+            'SETOR_ATIVIDADE': ['Setor de ativdade', 'Setor de Atividade', 'Setor'],
             
-            # Bloco 1: Remuneração Baseada em Ações (Colunas F-J)
+            # Bloco 1: Remuneração Baseada em Ações
             'NUM_MEMBROS_ACOES': ['Quantidade_Membros_Remunerados_Com_Acoes_Opcoes'],
             'VALOR_OPCOES_EXERCIDAS': ['Valor_Total_Opcoes_Acoes_Exercidas_Reconhecidas_Resultado_Exercicio'],
             'VALOR_ACOES_RESTRITAS': ['Valor_Total_Acoes_Restritas_Entregues_Reconhecidas_Resultado_Exercicio'],
             'VALOR_OUTROS_PLANOS_ACOES': ['Valor_Total_Outros_Planos_Baseados_Acoes_Reconhecidos_Resultado_Exercicio'],
             'TOTAL_REM_ACOES_BLOCO1': ['Valor_Total_Remuneracao_Baseada_Acoes_Reconhecida_Resultado_Exercicio'],
 
-            # Bloco 2: Remuneração Total e Componentes (Colunas K-AF)
+            # Bloco 2: Remuneração Total e Componentes
             'NUM_MEMBROS_TOTAL': ['Quantidade_Total_Membros_Remunerados_Orgao'],
             'REM_FIXA_SALARIO': ['Salario_Fixo_Anual_Total'],
             'REM_FIXA_BENEFICIOS': ['Beneficios_Anual_Total'],
@@ -49,7 +49,7 @@ def load_data(url: str) -> pd.DataFrame:
             'REM_VAR_OUTROS': ['Outros_Valores_Remuneracao_Variavel_Anual_Total'],
             'TOTAL_REMUNERACAO_ORGAO': ['Valor_Total_Remuneracao_Anual_Orgao'],
 
-            # Bloco 3: Métricas de Bônus e PLR (Colunas AG-AO)
+            # Bloco 3: Métricas de Bônus e PLR
             'NUM_MEMBROS_BONUS': ['Quantidade_Membros_Com_Direito_Bonus_Participacao_Resultados'],
             'VALOR_BONUS_APROVADO': ['Valor_Total_Bonus_Participacao_Resultados_Aprovado'],
             'PERC_LUCRO_PAGO': ['Percentual_Lucro_Liquido_Destinado_Remuneracao'],
@@ -64,14 +64,6 @@ def load_data(url: str) -> pd.DataFrame:
         
         df.rename(columns=actual_rename_dict, inplace=True)
 
-        # --- CORREÇÃO ROBUSTA PARA KEYERROR EM SETOR_ATIVIDADE ---
-        # Garante que a coluna de setor exista para evitar que os filtros quebrem.
-        if 'SETOR_ATIVIDADE' not in df.columns:
-            st.warning("Atenção: A coluna 'SETOR_ATIVIDADE' não foi encontrada. As análises por setor podem não funcionar como esperado.")
-            df['SETOR_ATIVIDADE'] = "Setor Não Informado" # Cria uma coluna placeholder
-        else:
-            df['SETOR_ATIVIDADE'] = df['SETOR_ATIVIDADE'].str.strip()
-
         # Converte todas as colunas numéricas de uma vez
         all_renamed_cols = list(rename_map.keys())
         for col in all_renamed_cols:
@@ -79,15 +71,23 @@ def load_data(url: str) -> pd.DataFrame:
                  if 'NUM' in col or 'VALOR' in col or 'TOTAL' in col or 'REM' in col or 'PERC' in col:
                     df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
 
-        # --- CORREÇÃO ROBUSTA: Cálculo dos Totais ---
-        # Calcula os totais somando os componentes para garantir que as colunas existam.
+        # --- Limpeza e Padronização de Dados Categóricos ---
+        categorical_cols = ['NOME_COMPANHIA', 'ORGAO_ADMINISTRACAO', 'SETOR_ATIVIDADE']
+        for col in categorical_cols:
+            if col in df.columns:
+                df[col] = df[col].astype(str).str.strip().str.upper()
+            else:
+                # Mecanismo de segurança para colunas categóricas críticas
+                st.warning(f"Atenção: A coluna para '{col}' não foi encontrada. Um valor padrão será usado.")
+                df[col] = f"{col.replace('_', ' ').title()} Não Informado"
+
+        # --- Cálculo Robusto dos Totais ---
         fixed_rem_components = ['REM_FIXA_SALARIO', 'REM_FIXA_BENEFICIOS', 'REM_FIXA_POS_EMPREGO', 'REM_FIXA_RESCISAO', 'REM_FIXA_OUTROS']
         variable_rem_components = ['REM_VAR_BONUS_PLR', 'REM_VAR_ACOES', 'REM_VAR_OUTROS']
         
-        # Garante que as colunas de componentes existam antes de somar
         for component_col in fixed_rem_components + variable_rem_components:
             if component_col not in df.columns:
-                df[component_col] = 0 # Cria a coluna com zeros se não existir
+                df[component_col] = 0
 
         df['TOTAL_REM_FIXA'] = df[fixed_rem_components].sum(axis=1)
         df['TOTAL_REM_VARIAVEL'] = df[variable_rem_components].sum(axis=1)
@@ -128,62 +128,56 @@ def page_remuneracao_consolidada(df: pd.DataFrame):
 
     st.subheader("Evolução da Estrutura da Remuneração")
     
-    # --- Filtros aprimorados ---
+    # --- Filtros aprimorados e seguros ---
     col1, col2, col3 = st.columns(3)
     with col1:
-        setor = st.selectbox("Selecione o Setor", sorted(df['SETOR_ATIVIDADE'].dropna().unique()), key='setor_consolidado')
+        setores_disponiveis = sorted(df['SETOR_ATIVIDADE'].dropna().unique())
+        setor = st.selectbox("Selecione o Setor", setores_disponiveis, key='setor_consolidado')
     
     df_setor = df[df['SETOR_ATIVIDADE'] == setor]
     
     with col2:
-        orgao = st.selectbox("Selecione o Órgão", sorted(df_setor['ORGAO_ADMINISTRACAO'].unique()), key='orgao_consolidado')
-    
+        orgaos_disponiveis = sorted(df_setor['ORGAO_ADMINISTRACAO'].unique())
+        if orgaos_disponiveis:
+            orgao = st.selectbox("Selecione o Órgão", orgaos_disponiveis, key='orgao_consolidado')
+        else:
+            st.warning("Nenhum órgão disponível para o setor selecionado.")
+            st.stop()
+            
     df_orgao = df_setor[df_setor['ORGAO_ADMINISTRACAO'] == orgao]
 
     with col3:
-        empresa = st.selectbox("Selecione a Empresa", sorted(df_orgao['NOME_COMPANHIA'].unique()), key='empresa_consolidado')
+        empresas_disponiveis = sorted(df_orgao['NOME_COMPANHIA'].unique())
+        if empresas_disponiveis:
+            empresa = st.selectbox("Selecione a Empresa", empresas_disponiveis, key='empresa_consolidado')
+        else:
+            st.warning("Nenhuma empresa disponível para a seleção de setor e órgão.")
+            st.stop()
 
     # --- Preparação dos dados para o gráfico de barras empilhadas ---
     df_empresa_filtrada = df_orgao[df_orgao['NOME_COMPANHIA'] == empresa]
 
-    # Componentes detalhados da remuneração
     component_cols = {
         'Salário': 'REM_FIXA_SALARIO',
         'Benefícios': 'REM_FIXA_BENEFICIOS',
         'Pós-Emprego': 'REM_FIXA_POS_EMPREGO',
         'Bônus/PLR': 'REM_VAR_BONUS_PLR',
-        'Ações (do Bloco 2)': 'REM_VAR_ACOES',
+        'Ações (Bloco 2)': 'REM_VAR_ACOES',
         'Outros (Fixo)': 'REM_FIXA_OUTROS',
         'Outros (Variável)': 'REM_VAR_OUTROS',
     }
 
-    # Garante que todas as colunas de componentes existam
-    for col in component_cols.values():
-        if col not in df_empresa_filtrada.columns:
-            df_empresa_filtrada[col] = 0
-
-    # Agrupa por ano e soma os componentes
-    yearly_data = df_empresa_filtrada.groupby('ANO_REFER')[[col for col in component_cols.values()]].sum().reset_index()
-
-    # Transforma os dados do formato 'largo' para 'longo' para o Plotly
+    yearly_data = df_empresa_filtrada.groupby('ANO_REFER')[[col for col in component_cols.values() if col in df_empresa_filtrada.columns]].sum().reset_index()
     df_plot = yearly_data.melt(id_vars=['ANO_REFER'], var_name='Componente', value_name='Valor')
     
-    # Mapeia os nomes técnicos para nomes amigáveis para a legenda
     friendly_names = {v: k for k, v in component_cols.items()}
     df_plot['Componente'] = df_plot['Componente'].map(friendly_names)
 
     if not df_plot.empty and df_plot['Valor'].sum() > 0:
         fig = px.bar(
-            df_plot,
-            x='ANO_REFER',
-            y='Valor',
-            color='Componente',
+            df_plot, x='ANO_REFER', y='Valor', color='Componente',
             title=f"Evolução dos Componentes da Remuneração para {empresa}<br><sub>Órgão: {orgao}</sub>",
-            labels={
-                'ANO_REFER': 'Ano do Exercício Social',
-                'Valor': 'Valor Total Anual (R$)',
-                'Componente': 'Componente da Remuneração'
-            },
+            labels={'ANO_REFER': 'Ano', 'Valor': 'Valor Anual (R$)', 'Componente': 'Componente'},
             text_auto='.2s'
         )
         fig.update_layout(xaxis_type='category', barmode='stack')
@@ -211,9 +205,9 @@ def page_remuneracao_acoes(df: pd.DataFrame):
         st.info("Não há dados de remuneração baseada em ações para o ano selecionado.")
 
     st.subheader(f"Composição da Remuneração por Ações ({ano_selecionado})")
-    empresa_selecionada_acoes = st.selectbox("Selecione uma Empresa para detalhar", sorted(df_ano['NOME_COMPANHIA'].unique()), key='empresa_acoes')
-    
-    if empresa_selecionada_acoes:
+    empresas_disponiveis = sorted(df_ano[df_ano['TOTAL_REM_ACOES_BLOCO1']>0]['NOME_COMPANHIA'].unique())
+    if empresas_disponiveis:
+        empresa_selecionada_acoes = st.selectbox("Selecione uma Empresa para detalhar", empresas_disponiveis, key='empresa_acoes')
         df_empresa = df_ano[df_ano['NOME_COMPANHIA'] == empresa_selecionada_acoes]
         opcoes = df_empresa['VALOR_OPCOES_EXERCIDAS'].sum()
         restritas = df_empresa['VALOR_ACOES_RESTRITAS'].sum()
@@ -225,6 +219,8 @@ def page_remuneracao_acoes(df: pd.DataFrame):
             st.plotly_chart(fig_comp, use_container_width=True)
         else:
             st.info("Não há dados detalhados sobre os tipos de planos baseados em ações.")
+    else:
+        st.info("Nenhuma empresa com remuneração baseada em ações para detalhar neste ano.")
 
 
 def page_bonus_plr(df: pd.DataFrame):
@@ -261,8 +257,6 @@ def page_bonus_plr(df: pd.DataFrame):
 def main():
     """Função principal que organiza a UI e a navegação."""
     
-    # --- CORREÇÃO DA URL ---
-    # A URL foi corrigida para apontar para o arquivo "raw" (bruto) e não para a página de visualização do GitHub.
     github_url = "https://raw.githubusercontent.com/tovarich86/pesq_rem_CVM/main/dados_cvm_mesclados.csv.csv"
     df = load_data(github_url)
 
