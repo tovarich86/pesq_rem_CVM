@@ -139,12 +139,13 @@ def format_year(year):
 def page_home():
     st.title("Análise Interativa de Remuneração de Administradores")
     
-    # --- AJUSTE DA IMAGEM ---
-    # A URL da imagem temática é adicionada aqui.
-    # O parâmetro 'width' controla o tamanho da imagem para que ela não ocupe a tela inteira.
+    # --- IMAGEM HARMONIZADA PARA DESKTOP E CELULAR ---
+    # A URL foi atualizada para uma imagem com tema similar e proporção de banner.
+    # use_container_width=True garante que a imagem se ajuste à largura da tela,
+    # funcionando bem em qualquer dispositivo.
     st.image(
-        "https://storage.googleapis.com/gemini-prod/images/8472506b-586b-4395-97c0-264104d49a62",
-        width=800, # Ajuste este valor se desejar uma imagem maior ou menor
+        "https://images.unsplash.com/photo-1535223289827-42f1e9919769?q=80&w=1974&auto=format&fit=crop",
+        use_container_width=True,
         caption="Análise de Dados, Tecnologia e Governança"
     )
     
@@ -180,6 +181,7 @@ def page_home():
         3.  **Dados de 2025 são Projeções:** Os valores referentes ao ano de 2025 representam a **proposta de remuneração aprovada**, e não necessariamente o valor que será efetivamente pago.
         4.  **Arquivo CSV como Única Fonte:** O aplicativo depende exclusivamente do arquivo CSV fornecido. Quaisquer erros de compilação, extração ou tratamento prévio neste arquivo serão refletidos diretamente nas análises.
         """)
+
 
 
 def page_remuneracao_individual(df: pd.DataFrame):
