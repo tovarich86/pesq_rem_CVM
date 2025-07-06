@@ -468,6 +468,8 @@ def page_estatisticas_quartis(df: pd.DataFrame):
 def main():
     github_url = "https://raw.githubusercontent.com/tovarich86/pesq_rem_CVM/main/dados_cvm_mesclados.csv.csv"
     df_original = load_data(github_url)
+    df_original = pd.read_csv(github_url, sep=',', encoding='utf-8-sig', engine='python')
+    df_original.rename(columns={'ATIVDADE': 'SETOR_'}, inplace=True)
     if df_original.empty:
         st.error("Falha no carregamento dos dados. O aplicativo não pode continuar.")
         st.stop()
