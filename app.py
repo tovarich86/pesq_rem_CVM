@@ -144,11 +144,7 @@ def page_home():
     # use_container_width=True garante que a imagem se ajuste à largura da tela,
     # funcionando bem em qualquer dispositivo.
     st.image(
-        "https://raw.githubusercontent.com/tovarich86/pesq_rem_CVM/main/Gemini_Generated_Image_k75a3hk75a3hk75a.png",
-        use_container_width=True,
-        
-    )
-    
+        "https://raw.githubusercontent.com/tovarich86/pesq_rem_CVM/main/Gemini_Generated_Image_k75a3hk75a3hk75a.png")    
     st.markdown("""
     Esta ferramenta foi desenvolvida para permitir a análise interativa dos dados de remuneração de administradores de companhias abertas brasileiras, utilizando como base o arquivo de dados compilado e disponibilizado. A metodologia empregada busca replicar e expandir as análises apresentadas em pesquisas de mercado, como a do IBGC.
     """)
