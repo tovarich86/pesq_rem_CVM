@@ -144,7 +144,7 @@ def page_home():
     # use_container_width=True garante que a imagem se ajuste à largura da tela,
     # funcionando bem em qualquer dispositivo.
     st.markdown("""
-    Esta ferramenta foi desenvolvida para permitir a análise interativa dos dados de remuneração de administradores de companhias abertas brasileiras, utilizando como base o arquivo de dados compilado e disponibilizado. A metodologia empregada busca replicar e expandir as análises apresentadas em pesquisas de mercado.
+    Esta ferramenta foi desenvolvida para permitir a análise interativa dos dados de remuneração de administradores de companhias abertas brasileiras, utilizando como base o arquivo de dados compilado do FRE. 
     """)
     with st.expander("Clique para ver a Metodologia, Limitações e Fórmulas"):
         st.subheader("Metodologia")
