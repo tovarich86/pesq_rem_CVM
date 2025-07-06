@@ -211,7 +211,7 @@ def page_bonus_plr(df: pd.DataFrame):
 def main():
     """Função principal que organiza a UI e a navegação."""
     
-    github_url = "https://raw.githubusercontent.com/tovarich86/pesq_rem_CVM/main/dados_cvm_mesclados.csv.csv"
+    github_url = "https://github.com/tovarich86/pesq_rem_CVM/blob/main/dados_cvm_mesclados.csv.csv"
     df = load_data(github_url)
 
     if df.empty:
