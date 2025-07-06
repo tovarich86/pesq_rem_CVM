@@ -18,41 +18,57 @@ def load_data(url: str) -> pd.DataFrame:
     para facilitar as análises, espelhando a estrutura de blocos da CVM.
     """
     try:
-        # O engine 'python' é mais flexível para ler arquivos com possíveis inconsistências.
         df = pd.read_csv(url, sep=',', encoding='latin-1', engine='python')
         df.columns = df.columns.str.strip()
 
         # Mapeamento completo e flexível das colunas para nomes padronizados.
         rename_map = {
-            # Identificação
+            # Identificação e Filtros Novos
             'NOME_COMPANHIA': ['DENOM_CIA'],
             'ANO_REFER': ['Ano do Exercício Social'],
             'ORGAO_ADMINISTRACAO': ['Orgao_Administracao'],
-            'SETOR_ATIVIDADE': ['Setor de ativdade', 'Setor de Atividade', 'Setor'],
+            'SETOR_ATIVIDADE': ['SETOR_DE_ATIVDADE'],
+            'CONTROLE_ACIONARIO': ['CONTROLE_ACIONARIO'],
+            'UF_SEDE': ['UF_SEDE'],
             
-            # Bloco 1: Remuneração Baseada em Ações
+            # Bloco 1: Remuneração Baseada em Ações (F-J)
             'NUM_MEMBROS_ACOES': ['Quantidade_Membros_Remunerados_Com_Acoes_Opcoes'],
             'VALOR_OPCOES_EXERCIDAS': ['Valor_Total_Opcoes_Acoes_Exercidas_Reconhecidas_Resultado_Exercicio'],
             'VALOR_ACOES_RESTRITAS': ['Valor_Total_Acoes_Restritas_Entregues_Reconhecidas_Resultado_Exercicio'],
             'VALOR_OUTROS_PLANOS_ACOES': ['Valor_Total_Outros_Planos_Baseados_Acoes_Reconhecidos_Resultado_Exercicio'],
             'TOTAL_REM_ACOES_BLOCO1': ['Valor_Total_Remuneracao_Baseada_Acoes_Reconhecida_Resultado_Exercicio'],
 
-            # Bloco 2: Remuneração Total e Componentes
+            # Bloco 2: Remuneração Individual (Máx/Média/Mín) (K-O)
+            'NUM_MEMBROS_INDIVIDUAL': ['Quantidade_Membros_Orgao_Remuneracao_Individual'],
+            'REM_MAXIMA_INDIVIDUAL': ['Valor_Maior_Remuneracao_Individual_Reconhecida_Exercicio'],
+            'REM_MEDIA_INDIVIDUAL': ['Valor_Medio_Remuneracao_Individual_Reconhecida_Exercicio'],
+            'REM_MINIMA_INDIVIDUAL': ['Valor_Menor_Remuneracao_Individual_Reconhecida_Exercicio'],
+            'DESVIO_PADRAO_INDIVIDUAL': ['Desvio_Padrao_Remuneracao_Individual_Reconhecida_Exercicio'],
+
+            # Bloco 3: Componentes da Remuneração Total (P-AF)
             'NUM_MEMBROS_TOTAL': ['Quantidade_Total_Membros_Remunerados_Orgao'],
             'REM_FIXA_SALARIO': ['Salario_Fixo_Anual_Total'],
             'REM_FIXA_BENEFICIOS': ['Beneficios_Anual_Total'],
             'REM_FIXA_POS_EMPREGO': ['Beneficios_Pos_Emprego_Anual_Total'],
             'REM_FIXA_RESCISAO': ['Beneficios_Cessacao_Cargo_Anual_Total'],
             'REM_FIXA_OUTROS': ['Outros_Valores_Remuneracao_Fixa_Anual_Total'],
+            'TOTAL_REM_FIXA': ['Valor_Total_Remuneracao_Fixa_Anual_Orgao'],
             'REM_VAR_BONUS_PLR': ['Bonus_Participacao_Resultados_Anual_Total'],
             'REM_VAR_ACOES': ['Remuneracao_Baseada_Acoes_Anual_Total'],
             'REM_VAR_OUTROS': ['Outros_Valores_Remuneracao_Variavel_Anual_Total'],
+            'TOTAL_REM_VARIAVEL': ['Remuneracao_Variavel_Anual_Total'],
             'TOTAL_REMUNERACAO_ORGAO': ['Valor_Total_Remuneracao_Anual_Orgao'],
 
-            # Bloco 3: Métricas de Bônus e PLR
-            'NUM_MEMBROS_BONUS': ['Quantidade_Membros_Com_Direito_Bonus_Participacao_Resultados'],
-            'VALOR_BONUS_APROVADO': ['Valor_Total_Bonus_Participacao_Resultados_Aprovado'],
-            'PERC_LUCRO_PAGO': ['Percentual_Lucro_Liquido_Destinado_Remuneracao'],
+            # Bloco 4: Métricas de Bônus e PLR (AG-AO e novas colunas)
+            'NUM_MEMBROS_BONUS_PLR': ['QTD_MEMBROS_REMUNERADOS_VARIAVEL'],
+            'BONUS_MIN': ['BONUS_VALOR_MINIMO'],
+            'BONUS_MAX': ['BONUS_VALOR_MAXIMO'],
+            'BONUS_ALVO': ['BONUS_VALOR_METAS_ATINGIDAS'],
+            'BONUS_PAGO': ['BONUS_VALOR_EFETIVO'],
+            'PLR_MIN': ['PARTICIPACAO_VALOR_MINIMO'],
+            'PLR_MAX': ['PARTICIPACAO_VALOR_MAXIMO'],
+            'PLR_ALVO': ['PARTICIPACAO_VALOR_METAS_ATINGIDAS'],
+            'PLR_PAGO': ['PARTICIPACAO_VALOR_EFETIVO'],
         }
 
         actual_rename_dict = {}
@@ -61,36 +77,24 @@ def load_data(url: str) -> pd.DataFrame:
                 if old_name in df.columns:
                     actual_rename_dict[old_name] = new_name
                     break
-        
         df.rename(columns=actual_rename_dict, inplace=True)
 
         # Converte todas as colunas numéricas de uma vez
-        all_renamed_cols = list(rename_map.keys())
-        for col in all_renamed_cols:
-            if col in df.columns:
-                 if 'NUM' in col or 'VALOR' in col or 'TOTAL' in col or 'REM' in col or 'PERC' in col:
+        all_numeric_cols = list(rename_map.keys())
+        for col in all_numeric_cols:
+            if 'NUM' in col or 'VALOR' in col or 'TOTAL' in col or 'REM' in col or 'PERC' in col or 'BONUS' in col or 'PLR' in col or 'DESVIO' in col:
+                 if col in df.columns:
                     df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+                 else:
+                    df[col] = 0 # Garante que a coluna exista
 
-        # --- Limpeza e Padronização de Dados Categóricos ---
-        categorical_cols = ['NOME_COMPANHIA', 'ORGAO_ADMINISTRACAO', 'SETOR_ATIVIDADE']
+        # Limpeza e Padronização de Dados Categóricos
+        categorical_cols = ['NOME_COMPANHIA', 'ORGAO_ADMINISTRACAO', 'SETOR_ATIVIDADE', 'CONTROLE_ACIONARIO', 'UF_SEDE']
         for col in categorical_cols:
             if col in df.columns:
-                df[col] = df[col].astype(str).str.strip().str.upper()
+                df[col] = df[col].astype(str).str.strip().str.upper().fillna(f'{col.replace("_", " ").title()} Não Informado')
             else:
-                # Mecanismo de segurança para colunas categóricas críticas
-                st.warning(f"Atenção: A coluna para '{col}' não foi encontrada. Um valor padrão será usado.")
                 df[col] = f"{col.replace('_', ' ').title()} Não Informado"
-
-        # --- Cálculo Robusto dos Totais ---
-        fixed_rem_components = ['REM_FIXA_SALARIO', 'REM_FIXA_BENEFICIOS', 'REM_FIXA_POS_EMPREGO', 'REM_FIXA_RESCISAO', 'REM_FIXA_OUTROS']
-        variable_rem_components = ['REM_VAR_BONUS_PLR', 'REM_VAR_ACOES', 'REM_VAR_OUTROS']
-        
-        for component_col in fixed_rem_components + variable_rem_components:
-            if component_col not in df.columns:
-                df[component_col] = 0
-
-        df['TOTAL_REM_FIXA'] = df[fixed_rem_components].sum(axis=1)
-        df['TOTAL_REM_VARIAVEL'] = df[variable_rem_components].sum(axis=1)
 
         if 'ANO_REFER' in df.columns:
             df['ANO_REFER'] = pd.to_numeric(df['ANO_REFER'], errors='coerce').dropna().astype(int)
@@ -100,195 +104,210 @@ def load_data(url: str) -> pd.DataFrame:
         st.error(f"Erro crítico ao carregar ou processar os dados: {e}")
         return pd.DataFrame()
 
-
 # --- PÁGINAS DA APLICAÇÃO ---
 
 def page_home():
-    """Página inicial da aplicação."""
     st.title("Análise Interativa de Remuneração de Administradores")
     st.markdown("""
-    Bem-vindo(a) à ferramenta de análise de remuneração de companhias abertas brasileiras, baseada nos dados da CVM.
-    Esta versão foi reestruturada para alinhar as análises com os blocos de dados do formulário de referência.
+    Bem-vindo(a) à ferramenta de análise de remuneração de companhias abertas brasileiras. Esta aplicação foi estruturada para refletir os blocos de dados do Formulário de Referência da CVM.
 
     **Como usar:**
-    - **Navegue pelas seções temáticas** no menu à esquerda para explorar diferentes aspectos da remuneração.
-    - **Use os filtros** em cada página para customizar a visualização por ano, órgão ou setor.
+    1.  **Use os filtros na barra lateral** para refinar sua análise por UF, Setor ou Controle Acionário. Esses filtros são globais.
+    2.  **Navegue pelas seções temáticas** no menu principal para explorar diferentes aspectos da remuneração.
     
     **Seções de Análise:**
-    - **Remuneração Consolidada:** Explore os valores totais, rankings e a estrutura geral da remuneração (salário, variável, etc.).
+    - **Remuneração Individual (Máx/Média/Mín):** Analise a dispersão salarial dentro de um órgão (maior, menor e média remuneração individual).
+    - **Componentes da Remuneração Total:** Veja a composição da remuneração total do órgão (salário, bônus, benefícios) e sua evolução.
     - **Remuneração Baseada em Ações:** Foque nos pagamentos via opções e ações.
     - **Bônus e PLR:** Investigue os bônus, participação nos lucros e métricas de desempenho.
     """)
-    st.info("Selecione uma opção de análise na barra lateral para começar.")
 
-
-def page_remuneracao_consolidada(df: pd.DataFrame):
-    """Página para análises do Bloco 2: Remuneração Total e Componentes."""
-    st.header("Análise da Remuneração Consolidada")
-
-    st.subheader("Evolução da Estrutura da Remuneração")
+def page_remuneracao_individual(df: pd.DataFrame):
+    st.header("Análise da Remuneração Individual (Máxima, Média e Mínima)")
     
-    # --- Filtros aprimorados e seguros ---
+    # Filtros de página contextuais e em cascata
     col1, col2, col3 = st.columns(3)
     with col1:
-        setores_disponiveis = sorted(df['SETOR_ATIVIDADE'].dropna().unique())
-        setor = st.selectbox("Selecione o Setor", setores_disponiveis, key='setor_consolidado')
+        ano = st.selectbox("1. Selecione o Ano", sorted(df['ANO_REFER'].unique(), reverse=True), key='ano_ind')
     
-    df_setor = df[df['SETOR_ATIVIDADE'] == setor]
-    
+    df_ano = df[df['ANO_REFER'] == ano]
+
     with col2:
-        orgaos_disponiveis = sorted(df_setor['ORGAO_ADMINISTRACAO'].unique())
-        if orgaos_disponiveis:
-            orgao = st.selectbox("Selecione o Órgão", orgaos_disponiveis, key='orgao_consolidado')
-        else:
-            st.warning("Nenhum órgão disponível para o setor selecionado.")
-            st.stop()
-            
-    df_orgao = df_setor[df_setor['ORGAO_ADMINISTRACAO'] == orgao]
+        orgaos_disponiveis = sorted(df_ano['ORGAO_ADMINISTRACAO'].unique())
+        orgao = st.selectbox("2. Selecione o Órgão", orgaos_disponiveis, key='orgao_ind')
+    
+    df_orgao = df_ano[df_ano['ORGAO_ADMINISTRACAO'] == orgao]
 
     with col3:
         empresas_disponiveis = sorted(df_orgao['NOME_COMPANHIA'].unique())
-        if empresas_disponiveis:
-            empresa = st.selectbox("Selecione a Empresa", empresas_disponiveis, key='empresa_consolidado')
-        else:
-            st.warning("Nenhuma empresa disponível para a seleção de setor e órgão.")
+        if not empresas_disponiveis:
+            st.warning("Nenhuma empresa encontrada para os filtros selecionados.")
             st.stop()
+        empresa = st.selectbox("3. Selecione a Empresa", empresas_disponiveis, key='empresa_ind')
 
-    # --- Preparação dos dados para o gráfico de barras empilhadas ---
-    df_empresa_filtrada = df_orgao[df_orgao['NOME_COMPANHIA'] == empresa]
+    df_filtered = df_orgao[df_orgao['NOME_COMPANHIA'] == empresa]
+
+    if not df_filtered.empty:
+        rem_max = df_filtered['REM_MAXIMA_INDIVIDUAL'].iloc[0]
+        rem_med = df_filtered['REM_MEDIA_INDIVIDUAL'].iloc[0]
+        rem_min = df_filtered['REM_MINIMA_INDIVIDUAL'].iloc[0]
+
+        if rem_max > 0:
+            data_plot = pd.DataFrame({'Métrica': ['Máxima', 'Média', 'Mínima'], 'Valor': [rem_max, rem_med, rem_min]})
+            fig = px.bar(data_plot, x='Métrica', y='Valor', text_auto='.2s', title=f"Dispersão da Remuneração Individual em {ano}", labels={'Valor': 'Valor (R$)'})
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("Não há dados de remuneração individual para a seleção atual.")
+    else:
+        st.warning("Nenhum dado encontrado para a combinação de filtros.")
+
+def page_componentes_remuneracao(df: pd.DataFrame):
+    st.header("Análise dos Componentes da Remuneração Total")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        orgao = st.selectbox("1. Selecione o Órgão", sorted(df['ORGAO_ADMINISTRACAO'].unique()), key='orgao_comp')
+    
+    df_orgao = df[df['ORGAO_ADMINISTRACAO'] == orgao]
+    
+    with col2:
+        empresas_disponiveis = sorted(df_orgao['NOME_COMPANHIA'].unique())
+        if not empresas_disponiveis:
+            st.warning("Nenhuma empresa encontrada para o órgão selecionado.")
+            st.stop()
+        empresa = st.selectbox("2. Selecione a Empresa", empresas_disponiveis, key='empresa_comp')
+
+    df_filtered = df_orgao[df_orgao['NOME_COMPANHIA'] == empresa]
 
     component_cols = {
-        'Salário': 'REM_FIXA_SALARIO',
-        'Benefícios': 'REM_FIXA_BENEFICIOS',
-        'Pós-Emprego': 'REM_FIXA_POS_EMPREGO',
-        'Bônus/PLR': 'REM_VAR_BONUS_PLR',
-        'Ações (Bloco 2)': 'REM_VAR_ACOES',
-        'Outros (Fixo)': 'REM_FIXA_OUTROS',
-        'Outros (Variável)': 'REM_VAR_OUTROS',
+        'Salário': 'REM_FIXA_SALARIO', 'Benefícios': 'REM_FIXA_BENEFICIOS', 'Pós-Emprego': 'REM_FIXA_POS_EMPREGO',
+        'Bônus/PLR': 'REM_VAR_BONUS_PLR', 'Ações (Bloco 2)': 'REM_VAR_ACOES', 'Outros': 'REM_FIXA_OUTROS'
     }
-
-    yearly_data = df_empresa_filtrada.groupby('ANO_REFER')[[col for col in component_cols.values() if col in df_empresa_filtrada.columns]].sum().reset_index()
-    df_plot = yearly_data.melt(id_vars=['ANO_REFER'], var_name='Componente', value_name='Valor')
     
-    friendly_names = {v: k for k, v in component_cols.items()}
-    df_plot['Componente'] = df_plot['Componente'].map(friendly_names)
+    yearly_data = df_filtered.groupby('ANO_REFER')[[col for col in component_cols.values() if col in df_filtered.columns]].sum().reset_index()
+    df_plot = yearly_data.melt(id_vars=['ANO_REFER'], var_name='Componente', value_name='Valor')
+    df_plot['Componente'] = df_plot['Componente'].map({v: k for k, v in component_cols.items()})
 
     if not df_plot.empty and df_plot['Valor'].sum() > 0:
-        fig = px.bar(
-            df_plot, x='ANO_REFER', y='Valor', color='Componente',
-            title=f"Evolução dos Componentes da Remuneração para {empresa}<br><sub>Órgão: {orgao}</sub>",
-            labels={'ANO_REFER': 'Ano', 'Valor': 'Valor Anual (R$)', 'Componente': 'Componente'},
-            text_auto='.2s'
-        )
+        fig = px.bar(df_plot, x='ANO_REFER', y='Valor', color='Componente', title=f"Evolução dos Componentes da Remuneração para {empresa}", labels={'ANO_REFER': 'Ano', 'Valor': 'Valor Anual (R$)'})
         fig.update_layout(xaxis_type='category', barmode='stack')
         st.plotly_chart(fig, use_container_width=True)
     else:
-        st.info("Não há dados de remuneração para exibir para a seleção atual.")
-
+        st.info("Não há dados de remuneração para exibir.")
 
 def page_remuneracao_acoes(df: pd.DataFrame):
-    """Página para análises do Bloco 1: Remuneração Baseada em Ações."""
     st.header("Análise de Remuneração Baseada em Ações")
+    ano = st.selectbox("Selecione o Ano", sorted(df['ANO_REFER'].unique(), reverse=True), key='ano_acoes')
+    df_ano = df[df['ANO_REFER'] == ano]
 
-    anos = sorted(df['ANO_REFER'].unique())
-    ano_selecionado = st.selectbox("Selecione o Ano", anos, index=len(anos)-1, key='ano_acoes')
-    df_ano = df[df['ANO_REFER'] == ano_selecionado]
-
-    st.subheader(f"Ranking de Empresas por Remuneração em Ações ({ano_selecionado})")
+    st.subheader(f"Ranking de Empresas por Remuneração em Ações ({ano})")
     rem_acoes_cia = df_ano.groupby('NOME_COMPANHIA')['TOTAL_REM_ACOES_BLOCO1'].sum().nlargest(10).reset_index()
-    rem_acoes_cia = rem_acoes_cia[rem_acoes_cia['TOTAL_REM_ACOES_BLOCO1'] > 0]
-
-    if not rem_acoes_cia.empty:
-        fig = px.bar(rem_acoes_cia, x='NOME_COMPANHIA', y='TOTAL_REM_ACOES_BLOCO1', text_auto='.2s', title="Top 10 Empresas por Valor Total de Remuneração Baseada em Ações", labels={'NOME_COMPANHIA': 'Empresa', 'TOTAL_REM_ACOES_BLOCO1': 'Valor Total (R$)'})
+    if not rem_acoes_cia[rem_acoes_cia['TOTAL_REM_ACOES_BLOCO1'] > 0].empty:
+        fig = px.bar(rem_acoes_cia, x='NOME_COMPANHIA', y='TOTAL_REM_ACOES_BLOCO1', text_auto='.2s', title="Top 10 Empresas por Valor Total")
         st.plotly_chart(fig, use_container_width=True)
     else:
-        st.info("Não há dados de remuneração baseada em ações para o ano selecionado.")
-
-    st.subheader(f"Composição da Remuneração por Ações ({ano_selecionado})")
-    empresas_disponiveis = sorted(df_ano[df_ano['TOTAL_REM_ACOES_BLOCO1']>0]['NOME_COMPANHIA'].unique())
-    if empresas_disponiveis:
-        empresa_selecionada_acoes = st.selectbox("Selecione uma Empresa para detalhar", empresas_disponiveis, key='empresa_acoes')
-        df_empresa = df_ano[df_ano['NOME_COMPANHIA'] == empresa_selecionada_acoes]
-        opcoes = df_empresa['VALOR_OPCOES_EXERCIDAS'].sum()
-        restritas = df_empresa['VALOR_ACOES_RESTRITAS'].sum()
-        outros = df_empresa['VALOR_OUTROS_PLANOS_ACOES'].sum()
-
-        if opcoes + restritas + outros > 0:
-            comp_data = pd.DataFrame({'Componente': ['Opções Exercidas', 'Ações Restritas', 'Outros Planos'], 'Valor': [opcoes, restritas, outros]})
-            fig_comp = px.bar(comp_data, x='Componente', y='Valor', title=f'Composição da Remuneração por Ações para {empresa_selecionada_acoes}', labels={'Componente': 'Tipo de Plano', 'Valor': 'Valor (R$)'}, text_auto='.2s')
-            st.plotly_chart(fig_comp, use_container_width=True)
-        else:
-            st.info("Não há dados detalhados sobre os tipos de planos baseados em ações.")
-    else:
-        st.info("Nenhuma empresa com remuneração baseada em ações para detalhar neste ano.")
-
+        st.info("Não há dados de remuneração baseada em ações para o ano.")
 
 def page_bonus_plr(df: pd.DataFrame):
-    """Página para análises do Bloco 3: Bônus e PLR."""
-    st.header("Análise de Bônus e Participação nos Resultados")
+    st.header("Análise Detalhada de Bônus e Participação nos Resultados")
 
-    anos = sorted(df['ANO_REFER'].unique())
-    ano_selecionado = st.selectbox("Selecione o Ano", anos, index=len(anos)-1, key='ano_bonus')
-    df_ano = df[df['ANO_REFER'] == ano_selecionado]
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        ano = st.selectbox("1. Selecione o Ano", sorted(df['ANO_REFER'].unique(), reverse=True), key='ano_bonus_detail')
+    
+    df_ano = df[df['ANO_REFER'] == ano]
+    
+    with col2:
+        orgao = st.selectbox("2. Selecione o Órgão", sorted(df_ano['ORGAO_ADMINISTRACAO'].unique()), key='orgao_bonus_detail')
+    
+    df_orgao = df_ano[df_ano['ORGAO_ADMINISTRACAO'] == orgao]
+    
+    with col3:
+        empresas_disponiveis = sorted(df_orgao['NOME_COMPANHIA'].unique())
+        if not empresas_disponiveis:
+            st.warning("Nenhuma empresa encontrada para a seleção.")
+            st.stop()
+        empresa = st.selectbox("3. Selecione a Empresa", empresas_disponiveis, key='empresa_bonus_detail')
 
-    st.subheader(f"Ranking de Empresas por Valor de Bônus Aprovado ({ano_selecionado})")
-    bonus_cia = df_ano.groupby('NOME_COMPANHIA')['VALOR_BONUS_APROVADO'].sum().nlargest(10).reset_index()
-    bonus_cia = bonus_cia[bonus_cia['VALOR_BONUS_APROVADO'] > 0]
-    if not bonus_cia.empty:
-        fig_bonus = px.bar(bonus_cia, x='NOME_COMPANHIA', y='VALOR_BONUS_APROVADO', text_auto='.2s', title="Top 10 Empresas por Valor de Bônus/PLR Aprovado", labels={'NOME_COMPANHIA': 'Empresa', 'VALOR_BONUS_APROVADO': 'Valor Total (R$)'})
-        st.plotly_chart(fig_bonus, use_container_width=True)
+    df_selection = df_orgao[df_orgao['NOME_COMPANHIA'] == empresa]
+
+    if not df_selection.empty:
+        bonus_alvo = df_selection['BONUS_ALVO'].iloc[0]
+        bonus_pago = df_selection['BONUS_PAGO'].iloc[0]
+        plr_alvo = df_selection['PLR_ALVO'].iloc[0]
+        plr_pago = df_selection['PLR_PAGO'].iloc[0]
+
+        data_to_plot = {
+            'Tipo': ['Bônus', 'Bônus', 'Participação nos Resultados', 'Participação nos Resultados'],
+            'Métrica': ['Alvo (Metas)', 'Efetivamente Pago', 'Alvo (Metas)', 'Efetivamente Pago'],
+            'Valor': [bonus_alvo, bonus_pago, plr_alvo, plr_pago]
+        }
+        df_plot = pd.DataFrame(data_to_plot)
+        df_plot = df_plot[df_plot['Valor'] > 0] 
+
+        if not df_plot.empty:
+            fig = px.bar(
+                df_plot, x='Tipo', y='Valor', color='Métrica',
+                barmode='group', text_auto='.2s',
+                title=f"Comparativo Bônus e PLR: Alvo vs. Pago em {ano}",
+                labels={'Valor': 'Valor (R$)', 'Tipo': 'Tipo de Remuneração Variável'}
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("Não há dados de Bônus ou PLR (Alvo e Pago) para a seleção atual.")
     else:
-        st.info("Não há dados de bônus/PLR para o ano selecionado.")
-
-    st.subheader(f"Correlação: Nº de Membros vs. Bônus Aprovado ({ano_selecionado})")
-    df_corr = df_ano.groupby('NOME_COMPANHIA').agg(Total_Membros=('NUM_MEMBROS_BONUS', 'sum'), Total_Bonus=('VALOR_BONUS_APROVADO', 'sum')).reset_index()
-    df_corr = df_corr[(df_corr['Total_Membros'] > 0) & (df_corr['Total_Bonus'] > 0)]
-
-    if not df_corr.empty and len(df_corr) > 1:
-        correlation = df_corr['Total_Membros'].corr(df_corr['Total_Bonus'])
-        st.metric("Coeficiente de Correlação de Pearson", f"{correlation:.2f}")
-        fig_corr = px.scatter(df_corr, x='Total_Membros', y='Total_Bonus', title="Nº de Membros com Direito a Bônus vs. Valor Aprovado", labels={'Total_Membros': 'Nº de Membros com Direito a Bônus', 'Total_Bonus': 'Bônus Total Aprovado (R$)'}, hover_name='NOME_COMPANHIA', trendline="ols", trendline_color_override="red")
-        st.plotly_chart(fig_corr, use_container_width=True)
-    else:
-        st.warning("Não há dados suficientes para calcular a correlação.")
-
+        st.warning("Nenhum dado encontrado para a combinação de filtros.")
 
 # --- Função Principal da Aplicação ---
 def main():
-    """Função principal que organiza a UI e a navegação."""
-    
     github_url = "https://raw.githubusercontent.com/tovarich86/pesq_rem_CVM/main/dados_cvm_mesclados.csv.csv"
-    df = load_data(github_url)
+    df_original = load_data(github_url)
 
-    if df.empty:
+    if df_original.empty:
         st.error("Falha no carregamento dos dados. O aplicativo não pode continuar.")
         st.stop()
 
     st.sidebar.title("Painel de Análise")
     st.sidebar.image("https://www.ibgc.org.br/themes/ibgc/dist/images/logo-default.svg", width=150)
     
+    st.sidebar.header("Filtros Globais")
+    
+    ufs_disponiveis = ["TODAS"] + sorted(df_original['UF_SEDE'].unique())
+    uf = st.sidebar.selectbox("UF da Sede", ufs_disponiveis)
+    
+    setores_disponiveis = ["TODOS"] + sorted(df_original['SETOR_ATIVIDADE'].unique())
+    setor = st.sidebar.selectbox("Setor de Atividade", setores_disponiveis)
+
+    controles_disponiveis = ["TODOS"] + sorted(df_original['CONTROLE_ACIONARIO'].unique())
+    controle = st.sidebar.selectbox("Controle Acionário", controles_disponiveis)
+
+    df_filtrado = df_original.copy()
+    if uf != "TODAS":
+        df_filtrado = df_filtrado[df_filtrado['UF_SEDE'] == uf]
+    if setor != "TODOS":
+        df_filtrado = df_filtrado[df_filtrado['SETOR_ATIVIDADE'] == setor]
+    if controle != "TODOS":
+        df_filtrado = df_filtrado[df_filtrado['CONTROLE_ACIONARIO'] == controle]
+
     pagina_selecionada = st.sidebar.radio(
         "Selecione a Análise:",
-        [
-            "Página Inicial",
-            "Remuneração Consolidada",
-            "Remuneração Baseada em Ações",
-            "Bônus e PLR",
-        ]
+        ["Página Inicial", "Remuneração Individual (Máx/Média/Mín)", "Componentes da Remuneração Total", "Remuneração Baseada em Ações", "Bônus e PLR"]
     )
     
-    st.sidebar.markdown("---")
-    st.sidebar.info("Aplicação desenvolvida para análise exploratória de dados da CVM.")
+    if df_filtrado.empty:
+        st.warning("Nenhum dado encontrado para os filtros globais selecionados. Por favor, ajuste os filtros na barra lateral.")
+        st.stop()
 
     if pagina_selecionada == "Página Inicial":
         page_home()
-    elif pagina_selecionada == "Remuneração Consolidada":
-        page_remuneracao_consolidada(df)
+    elif pagina_selecionada == "Remuneração Individual (Máx/Média/Mín)":
+        page_remuneracao_individual(df_filtrado)
+    elif pagina_selecionada == "Componentes da Remuneração Total":
+        page_componentes_remuneracao(df_filtrado)
     elif pagina_selecionada == "Remuneração Baseada em Ações":
-        page_remuneracao_acoes(df)
+        page_remuneracao_acoes(df_filtrado)
     elif pagina_selecionada == "Bônus e PLR":
-        page_bonus_plr(df)
-
+        page_bonus_plr(df_filtrado)
 
 if __name__ == "__main__":
     main()
