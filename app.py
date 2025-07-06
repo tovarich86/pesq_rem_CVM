@@ -27,7 +27,7 @@ def load_data(url: str) -> pd.DataFrame:
             'NOME_COMPANHIA': ['DENOM_CIA'],
             'ANO_REFER': ['Ano do Exercício Social'],
             'ORGAO_ADMINISTRACAO': ['Orgao_Administracao'],
-            'SETOR_ATIVIDADE': ['SETOR_DE_ATIVDADE', 'Setor de ativdade', 'Setor de Atividade', 'SETOR', 'ATIVIDADE'], # Mapeamento final
+            'SETOR_ATIVIDADE': ['SETOR_DE_ATIVDADE', 'Setor de ativdade', 'Setor de Atividade', 'SETOR', 'ATIVIDADE'],
             'CONTROLE_ACIONARIO': ['CONTROLE_ACIONARIO'],
             'UF_SEDE': ['UF_SEDE'],
             
@@ -40,10 +40,10 @@ def load_data(url: str) -> pd.DataFrame:
 
             # Bloco 2: Remuneração Individual (Máx/Média/Mín)
             'NUM_MEMBROS_INDIVIDUAL': ['Quantidade_Membros_Orgao_Remuneracao_Individual'],
-            'REM_MAXIMA_INDIVIDUAL': ['Valor_Maior_Remuneracao_Individual_Reconhecida_Exercicio'],
-            'REM_MEDIA_INDIVIDUAL': ['Valor_Medio_Remuneracao_Individual_Reconhecida_Exercicio'],
-            'REM_MINIMA_INDIVIDUAL': ['Valor_Menor_Remuneracao_Individual_Reconhecida_Exercicio'],
-            'DESVIO_PADRAO_INDIVIDUAL': ['Desvio_Padrao_Remuneracao_Individual_Reconhecida_Exercicio'],
+            'REM_MAXIMA_INDIVIDUAL': ['Valor_Maior_Remuneracao_Individual_Reconhecida_Exercicio', 'Valor_Maior_Remuneracao_Individual', 'REMUNERACAO_MAXIMA', 'VALOR_MAIOR_REMUNERACAO'],
+            'REM_MEDIA_INDIVIDUAL': ['Valor_Medio_Remuneracao_Individual_Reconhecida_Exercicio', 'Valor_Medio_Remuneracao_Individual', 'REMUNERACAO_MEDIA', 'VALOR_MEDIO_REMUNERACAO'],
+            'REM_MINIMA_INDIVIDUAL': ['Valor_Menor_Remuneracao_Individual_Reconhecida_Exercicio', 'Valor_Menor_Remuneracao_Individual', 'REMUNERACAO_MINIMA', 'VALOR_MENOR_REMUNERACAO'],
+            'DESVIO_PADRAO_INDIVIDUAL': ['Desvio_Padrao_Remuneracao_Individual_Reconhecida_Exercicio', 'DESVIO_PADRAO'],
 
             # Bloco 3: Componentes da Remuneração Total
             'NUM_MEMBROS_TOTAL': ['Quantidade_Total_Membros_Remunerados_Orgao'],
@@ -152,12 +152,32 @@ def page_remuneracao_individual(df: pd.DataFrame):
         rem_max = df_filtered['REM_MAXIMA_INDIVIDUAL'].iloc[0]
         rem_med = df_filtered['REM_MEDIA_INDIVIDUAL'].iloc[0]
         rem_min = df_filtered['REM_MINIMA_INDIVIDUAL'].iloc[0]
+        
+        # Lógica de verificação aprimorada
         if rem_max > 0:
             data_plot = pd.DataFrame({'Métrica': ['Máxima', 'Média', 'Mínima'], 'Valor': [rem_max, rem_med, rem_min]})
             fig = px.bar(data_plot, x='Métrica', y='Valor', text_auto='.2s', title=f"Dispersão da Remuneração Individual em {ano}", labels={'Valor': 'Valor (R$)'})
             st.plotly_chart(fig, use_container_width=True)
         else:
-            st.info("Não há dados de remuneração individual para a seleção atual.")
+            # Mensagem mais informativa se os dados forem zero
+            st.info("Os dados de remuneração individual (máxima, média, mínima) não foram informados ou encontrados no arquivo para esta seleção.")
+            with st.expander("Ajuda para depuração"):
+                st.write("""
+                **Causa Provável:** O aplicativo não encontrou as colunas com os dados de remuneração individual no arquivo CSV. Isso geralmente acontece se os nomes das colunas no arquivo não corresponderem exatamente ao esperado.
+
+                **O que verificar:**
+                1.  Abra o arquivo `dados_cvm_mesclados.csv.csv`.
+                2.  Procure pelas colunas que contêm a remuneração máxima, média e mínima.
+                3.  O aplicativo procura por nomes como:
+                    - `Valor_Maior_Remuneracao_Individual_Reconhecida_Exercicio`
+                    - `VALOR_MAIOR_REMUNERACAO`
+                    - `Valor_Medio_Remuneracao_Individual_Reconhecida_Exercicio`
+                    - `VALOR_MEDIO_REMUNERACAO`
+                    - `Valor_Menor_Remuneracao_Individual_Reconhecida_Exercicio`
+                    - `VALOR_MENOR_REMUNERACAO`
+                
+                Se os nomes no seu arquivo forem diferentes, o aplicativo não conseguirá ler os dados.
+                """)
     else:
         st.warning("Nenhum dado encontrado para a combinação de filtros.")
 
