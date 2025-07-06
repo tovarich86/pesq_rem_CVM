@@ -48,7 +48,7 @@ def load_data(url: str) -> pd.DataFrame:
             'DESVIO_PADRAO_INDIVIDUAL': ['Desvio_Padrao_Remuneracao_Individual_Reconhecida_Exercicio', 'DESVIO_PADRAO'],
 
             # Bloco 3: Componentes da Remuneração Total
-            'NUM_MEMBROS_TOTAL': ['QTD_MEMBROS_REMUNERADOS_TOTAL'],
+            'NUM_MEMBROS_TOTAL': ['Quantidade_Total_Membros_Remunerados_Orgao'],
             'REM_FIXA_SALARIO': ['SALARIO'],
             'REM_FIXA_BENEFICIOS': ['BENEFICIOS_DIRETOS_INDIRETOS'],
             'REM_FIXA_COMITES': ['PARTICIPACOES_COMITES'],
@@ -207,67 +207,114 @@ def page_remuneracao_individual(df: pd.DataFrame):
 
 def page_componentes_remuneracao(df: pd.DataFrame):
     st.header("Análise dos Componentes da Remuneração Total")
-    
-    # --- Filtros ---
-    col1, col2 = st.columns(2)
-    with col1:
-        empresa = st.selectbox("1. Selecione a Empresa", sorted(df['NOME_COMPANHIA'].unique()), key='empresa_comp')
-    df_empresa = df[df['NOME_COMPANHIA'] == empresa]
-    with col2:
-        ano = st.selectbox("2. Selecione o Ano", sorted(df_empresa['ANO_REFER'].unique(), reverse=True), key='ano_comp')
-    
-    df_filtered = df_empresa[df_empresa['ANO_REFER'] == ano]
-    
-    # --- Preparação dos dados ---
+
+    # --- Menu de Seleção de Análise ---
+    analysis_type = st.selectbox(
+        "Escolha o tipo de análise:",
+        [
+            "Composição por Empresa (Ano Único)",
+            "Evolução Anual Comparativa (por Órgão)",
+            "Ranking de Empresas (Top 15)"
+        ],
+        key="component_analysis_type"
+    )
+
     component_cols = {
         'Salário': 'REM_FIXA_SALARIO', 'Benefícios': 'REM_FIXA_BENEFICIOS', 'Comitês': 'REM_FIXA_COMITES',
         'Bônus': 'REM_VAR_BONUS', 'PLR': 'REM_VAR_PLR', 'Comissões': 'REM_VAR_COMISSOES',
         'Pós-Emprego': 'REM_POS_EMPREGO', 'Cessação': 'REM_CESSACAO_CARGO',
         'Ações': 'REM_ACOES_BLOCO3', 'Outros': 'REM_FIXA_OUTROS'
     }
-    
-    # Agrupa por órgão e soma os componentes
-    df_grouped = df_filtered.groupby('ORGAO_ADMINISTRACAO')[[col for col in component_cols.values() if col in df_filtered.columns]].sum()
-    
-    # Adiciona a soma total para usar no texto do gráfico
-    df_grouped['Total'] = df_grouped.sum(axis=1)
-    df_grouped = df_grouped[df_grouped['Total'] > 0] # Remove órgãos sem remuneração
-    
-    if not df_grouped.empty:
-        # Transforma os dados para o formato 'longo' para o Plotly
-        df_plot = df_grouped.drop(columns='Total').reset_index().melt(
-            id_vars='ORGAO_ADMINISTRACAO',
-            var_name='Componente',
-            value_name='Valor'
-        )
+
+    # --- Análise 1: Composição por Empresa (Ano Único) ---
+    if analysis_type == "Composição por Empresa (Ano Único)":
+        st.subheader("Composição da Remuneração por Órgão (Ano Único)")
+        col1, col2 = st.columns(2)
+        with col1:
+            empresa = st.selectbox("1. Selecione a Empresa", sorted(df['NOME_COMPANHIA'].unique()), key='empresa_comp_1')
+        df_empresa = df[df['NOME_COMPANHIA'] == empresa]
+        with col2:
+            ano = st.selectbox("2. Selecione o Ano", sorted(df_empresa['ANO_REFER'].unique(), reverse=True), key='ano_comp_1')
+        
+        df_filtered = df_empresa[df_empresa['ANO_REFER'] == ano]
+        
+        df_grouped = df_filtered.groupby('ORGAO_ADMINISTRACAO')[[col for col in component_cols.values() if col in df_filtered.columns]].sum()
+        df_grouped['Total'] = df_grouped.sum(axis=1)
+        df_grouped = df_grouped[df_grouped['Total'] > 0]
+        
+        if not df_grouped.empty:
+            df_plot = df_grouped.drop(columns='Total').reset_index().melt(id_vars='ORGAO_ADMINISTRACAO', var_name='Componente', value_name='Valor')
+            df_plot = df_plot[df_plot['Valor'] > 0]
+            df_plot['Componente'] = df_plot['Componente'].map({v: k for k, v in component_cols.items()})
+
+            fig = px.bar(df_plot, x='ORGAO_ADMINISTRACAO', y='Valor', color='Componente', title=f"Composição da Remuneração por Órgão para {empresa} em {ano}", labels={'ORGAO_ADMINISTRACAO': 'Órgão', 'Valor': 'Valor (R$)'})
+            fig.update_layout(barmode='stack')
+            
+            totals = df_grouped['Total']
+            fig.add_trace(go.Scatter(x=totals.index, y=totals, text=[f"<b>R$ {val:,.0f}</b>" for val in totals], mode='text', textposition='top center', showlegend=False))
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("Não há dados de componentes para exibir para a seleção atual.")
+
+    # --- Análise 2: Evolução Anual Comparativa ---
+    elif analysis_type == "Evolução Anual Comparativa (por Órgão)":
+        st.subheader("Evolução Anual dos Componentes por Órgão")
+        col1, col2 = st.columns(2)
+        with col1:
+            orgao = st.selectbox("1. Selecione o Órgão", sorted(df['ORGAO_ADMINISTRACAO'].unique()), key='orgao_comp_2')
+        with col2:
+            calc_type = st.radio("Calcular por:", ["Total", "Média por Membro"], key='calc_type_2', horizontal=True)
+
+        df_filtered = df[df['ORGAO_ADMINISTRACAO'] == orgao]
+        
+        yearly_data = df_filtered.groupby('ANO_REFER').agg({**{col: 'sum' for col in component_cols.values() if col in df.columns}, 'NUM_MEMBROS_TOTAL': 'sum'}).reset_index()
+        
+        if calc_type == "Média por Membro":
+            yearly_data = yearly_data[yearly_data['NUM_MEMBROS_TOTAL'] > 0]
+            for col in component_cols.values():
+                if col in yearly_data.columns:
+                    yearly_data[col] = yearly_data[col] / yearly_data['NUM_MEMBROS_TOTAL']
+        
+        df_plot = yearly_data.melt(id_vars=['ANO_REFER'], value_vars=[col for col in component_cols.values() if col in yearly_data.columns], var_name='Componente', value_name='Valor')
         df_plot = df_plot[df_plot['Valor'] > 0]
         df_plot['Componente'] = df_plot['Componente'].map({v: k for k, v in component_cols.items()})
 
-        # --- Criação do Gráfico ---
-        fig = px.bar(
-            df_plot,
-            x='ORGAO_ADMINISTRACAO',
-            y='Valor',
-            color='Componente',
-            title=f"Composição da Remuneração por Órgão para {empresa} em {ano}",
-            labels={'ORGAO_ADMINISTRACAO': 'Órgão de Administração', 'Valor': 'Valor Total Anual (R$)'}
-        )
-        fig.update_layout(barmode='stack')
-
-        # Adiciona o texto com o valor total em cima de cada barra
-        totals = df_grouped['Total']
-        fig.add_trace(go.Scatter(
-            x=totals.index,
-            y=totals,
-            text=[f"<b>R$ {val:,.0f}</b>" for val in totals],
-            mode='text',
-            textposition='top center',
-            showlegend=False
-        ))
+        if not df_plot.empty:
+            fig = px.bar(df_plot, x='ANO_REFER', y='Valor', color='Componente', title=f"Evolução dos Componentes para {orgao} ({calc_type})", labels={'ANO_REFER': 'Ano', 'Valor': f'Valor {calc_type} (R$)'})
+            fig.update_layout(xaxis_type='category', barmode='stack')
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("Não há dados para exibir para a seleção atual.")
+            
+    # --- Análise 3: Ranking de Empresas ---
+    elif analysis_type == "Ranking de Empresas (Top 15)":
+        st.subheader("Ranking de Empresas por Remuneração Total")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            ano = st.selectbox("1. Selecione o Ano", sorted(df['ANO_REFER'].unique(), reverse=True), key='ano_comp_3')
+        with col2:
+            orgao = st.selectbox("2. Selecione o Órgão", sorted(df['ORGAO_ADMINISTRACAO'].unique()), key='orgao_comp_3')
+        with col3:
+            calc_type = st.radio("Rankear por:", ["Total", "Média por Membro"], key='calc_type_3', horizontal=True)
+            
+        df_filtered = df[(df['ANO_REFER'] == ano) & (df['ORGAO_ADMINISTRACAO'] == orgao)]
         
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.info("Não há dados de componentes para exibir para a seleção atual.")
+        if calc_type == "Total":
+            df_rank = df_filtered.groupby('NOME_COMPANHIA')['TOTAL_REMUNERACAO_ORGAO'].sum().nlargest(15).reset_index()
+            col_rank = 'TOTAL_REMUNERACAO_ORGAO'
+        else: # Média por Membro
+            df_agg = df_filtered.groupby('NOME_COMPANHIA').agg(Total=('TOTAL_REMUNERACAO_ORGAO', 'sum'), Membros=('NUM_MEMBROS_TOTAL', 'sum')).reset_index()
+            df_agg = df_agg[df_agg['Membros'] > 0]
+            df_agg['Média'] = df_agg['Total'] / df_agg['Membros']
+            df_rank = df_agg.nlargest(15, 'Média')
+            col_rank = 'Média'
+            
+        if not df_rank.empty:
+            fig = px.bar(df_rank.sort_values(by=col_rank), x=col_rank, y='NOME_COMPANHIA', orientation='h', text_auto='.2s', title=f"Top 15 Empresas por Remuneração {calc_type}")
+            fig.update_layout(yaxis={'categoryorder':'total ascending'}, xaxis_title=f"Valor {calc_type} (R$)", yaxis_title="Empresa")
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("Não há dados para gerar o ranking para a seleção atual.")
 
 
 def page_remuneracao_acoes(df: pd.DataFrame):
