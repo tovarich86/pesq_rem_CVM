@@ -18,6 +18,7 @@ def load_data(url: str) -> pd.DataFrame:
     para facilitar as análises, espelhando a estrutura de blocos da CVM.
     """
     try:
+        # O engine 'python' é mais flexível para ler arquivos com possíveis inconsistências.
         df = pd.read_csv(url, sep=',', encoding='latin-1', engine='python')
         df.columns = df.columns.str.strip()
 
@@ -66,12 +67,11 @@ def load_data(url: str) -> pd.DataFrame:
         df.rename(columns=actual_rename_dict, inplace=True)
 
         # Converte todas as colunas numéricas de uma vez
-        numeric_cols = [v[0] for k, v in rename_map.items() if 'NUM' in k or 'VALOR' in k or 'TOTAL' in k or 'REM' in k or 'PERC' in k]
-        
-        for col in df.columns:
-             # Se a coluna após a renomeação estiver na nossa lista de numéricas
-            if col in rename_map.keys():
-                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+        all_renamed_cols = list(rename_map.keys())
+        for col in all_renamed_cols:
+            if col in df.columns:
+                 if 'NUM' in col or 'VALOR' in col or 'TOTAL' in col or 'REM' in col or 'PERC' in col:
+                    df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
 
         if 'ANO_REFER' in df.columns:
             df['ANO_REFER'] = pd.to_numeric(df['ANO_REFER'], errors='coerce').dropna().astype(int)
@@ -211,7 +211,9 @@ def page_bonus_plr(df: pd.DataFrame):
 def main():
     """Função principal que organiza a UI e a navegação."""
     
-    github_url = "https://github.com/tovarich86/pesq_rem_CVM/blob/main/dados_cvm_mesclados.csv.csv"
+    # --- CORREÇÃO DA URL ---
+    # A URL foi corrigida para apontar para o arquivo "raw" (bruto) e não para a página de visualização do GitHub.
+    github_url = "https://raw.githubusercontent.com/tovarich86/pesq_rem_CVM/main/dados_cvm_mesclados.csv.csv"
     df = load_data(github_url)
 
     if df.empty:
