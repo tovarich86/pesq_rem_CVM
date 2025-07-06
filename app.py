@@ -112,7 +112,7 @@ def page_visao_geral(df: pd.DataFrame):
             "Selecione o Ano para o Ranking",
             options=anos,
             index=len(anos)-1, # Padrão para o último ano
-            key='ano_geral'
+            key='orgao_geral'
         )
 
     # --- Análise 1: Tendência da Remuneração ---
@@ -329,7 +329,7 @@ def main():
     
     # URL para o seu arquivo CSV no GitHub (substitua pelo seu link)
     # IMPORTANTE: Use o link para o arquivo "raw" (bruto)
-    github_url = "https://github.com/tovarich86/pesq_rem_CVM/blob/main/dados_cvm_mesclados%20(1)%20-%20dados_cvm_mesclados%20(1).csv.csv"
+    github_url = "https://raw.githubusercontent.com/tovarich86/pesq_rem_CVM/main/dados_cvm_mesclados%20(1)%20-%20dados_cvm_mesclados%20(1).csv.csv"
 
     df = load_data(github_url)
 
