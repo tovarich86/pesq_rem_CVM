@@ -450,8 +450,9 @@ def page_estatisticas_quartis(df: pd.DataFrame):
     df_filtered = df_filtered[df_filtered[col_metrica] > 0]
     
     if not df_filtered.empty:
-        st.subheader(f"Estatísticas por Setor de  ({format_year(ano)})")
-        df_stats_sector = df_filtered.groupby('SETOR_')[col_metrica].describe().reset_index()
+        # CORREÇÃO: Use 'SETOR_ATIVIDADE' em vez de 'SETOR_'
+        st.subheader(f"Estatísticas por Setor de Atividade ({format_year(ano)})")
+        df_stats_sector = df_filtered.groupby('SETOR_ATIVIDADE')[col_metrica].describe().reset_index()
         df_stats_sector = df_stats_sector.rename(columns={'count': 'Nº de Companhias', 'mean': 'Média', 'std': 'Desvio Padrão', 'min': 'Mínimo', '25%': '1º Quartil', '50%': 'Mediana (2º Q)', '75%': '3º Quartil', 'max': 'Máximo'})
         st.dataframe(df_stats_sector.style.format({'Nº de Companhias': '{:,.0f}', 'Média': 'R$ {:,.2f}', 'Desvio Padrão': 'R$ {:,.2f}', 'Mínimo': 'R$ {:,.2f}', '1º Quartil': 'R$ {:,.2f}', 'Mediana (2º Q)': 'R$ {:,.2f}', '3º Quartil': 'R$ {:,.2f}', 'Máximo': 'R$ {:,.2f}'}))
         create_download_button(df_stats_sector, f"estatisticas_setor_{ano}_{orgao}")
@@ -465,22 +466,31 @@ def page_estatisticas_quartis(df: pd.DataFrame):
         st.warning("Não há dados para gerar a tabela de quartis para a seleção atual.")
 
 # --- Função Principal da Aplicação ---
+# --- Função Principal da Aplicação ---
 def main():
     github_url = "https://raw.githubusercontent.com/tovarich86/pesq_rem_CVM/main/dados_cvm_mesclados.csv.csv"
+    # 1. Carregue os dados USANDO APENAS a sua função de processamento.
     df_original = load_data(github_url)
-    df_original = pd.read_csv(github_url, sep=',', encoding='utf-8-sig', engine='python')
-    df_original.rename(columns={'ATIVDADE': 'SETOR_'}, inplace=True)
+
+    # 2. REMOVA a leitura redundante e a renomeação manual que causavam o erro.
+    # df_original = pd.read_csv(github_url, sep=',', encoding='utf-8-sig', engine='python') # <<-- REMOVER
+    # df_original.rename(columns={'ATIVDADE': 'SETOR_'}, inplace=True) # <<-- REMOVER
+
     if df_original.empty:
         st.error("Falha no carregamento dos dados. O aplicativo não pode continuar.")
         st.stop()
 
     st.sidebar.title("Painel de Análise")
     st.sidebar.header("Filtros Globais")
-    
+
+    # Use as colunas padronizadas pela função load_data
     ufs_disponiveis = ["TODAS"] + sorted(df_original['UF_SEDE'].unique())
     uf = st.sidebar.selectbox("UF da Sede", ufs_disponiveis)
-    setores_disponiveis = ["TODOS"] + sorted(df_original['SETOR_'].unique())
-    setor = st.sidebar.selectbox("Setor de ", setores_disponiveis)
+
+    # 3. CORRIJA o nome da coluna de setor para ser consistente com load_data
+    setores_disponiveis = ["TODOS"] + sorted(df_original['SETOR_ATIVIDADE'].unique())
+    setor = st.sidebar.selectbox("Setor de Atividade", setores_disponiveis) # Nome do filtro atualizado para clareza
+    
     controles_disponiveis = ["TODOS"] + sorted(df_original['CONTROLE_ACIONARIO'].unique())
     controle = st.sidebar.selectbox("Controle Acionário", controles_disponiveis)
 
@@ -488,7 +498,8 @@ def main():
     if uf != "TODAS":
         df_filtrado = df_filtrado[df_filtrado['UF_SEDE'] == uf]
     if setor != "TODOS":
-        df_filtrado = df_filtrado[df_filtrado['SETOR_'] == setor]
+        # 4. Use o nome de coluna correto no filtro também
+        df_filtrado = df_filtrado[df_filtrado['SETOR_ATIVIDADE'] == setor]
     if controle != "TODOS":
         df_filtrado = df_filtrado[df_filtrado['CONTROLE_ACIONARIO'] == controle]
 
@@ -496,7 +507,7 @@ def main():
         "Selecione a Análise:",
         ["Página Inicial", "Remuneração Individual (Máx/Média/Mín)", "Componentes da Remuneração Total", "Bônus e PLR", "Análise Estatística (Quartis)"]
     )
-    
+
     if df_filtrado.empty:
         st.warning("Nenhum dado encontrado para os filtros globais selecionados. Por favor, ajuste os filtros na barra lateral.")
         st.stop()
