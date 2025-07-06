@@ -365,46 +365,47 @@ def page_bonus_plr(df: pd.DataFrame):
     if not df_plot.empty:
         df_plot['ANO_REFER_FORMATTED'] = df_plot['ANO_REFER'].apply(format_year)
         
-        # MUDANÇA 1: Alterar barmode de 'group' para 'stack' para empilhar as barras.
         fig = px.bar(df_plot, x='ANO_REFER_FORMATTED', y='Valor', color='Métrica', 
-                     barmode='stack', # <-- ALTERADO AQUI
+                     barmode='stack',
                      facet_col='Tipo', 
                      title=f"Evolução de Bônus e PLR para {empresa} ({orgao})", 
                      labels={'ANO_REFER_FORMATTED': 'Ano', 'Valor': f'Valor {calc_type} (R$)'})
         
         fig.update_xaxes(type='category')
 
-        # MUDANÇA 2: Calcular os totais para cada barra empilhada.
-        # Agrupamos por ano e tipo (cada tipo é um sub-gráfico/faceta) e somamos os valores.
+        # --- MUDANÇA PRINCIPAL AQUI ---
+        # Lógica robusta para adicionar anotações de texto apenas se os dados existirem.
         totals_df = df_plot.groupby(['ANO_REFER_FORMATTED', 'Tipo'])['Valor'].sum().reset_index()
         
-        # Separamos os totais para cada faceta (Bônus e PLR)
         bonus_totals = totals_df[totals_df['Tipo'] == 'Bônus']
         plr_totals = totals_df[totals_df['Tipo'] == 'PLR']
 
-        # MUDANÇA 3: Adicionar os totais como anotações de texto no gráfico.
-        # Adicionamos uma "camada" de texto invisível (Scatter) sobre cada faceta.
-        # Faceta 1 (Bônus)
-        fig.add_trace(go.Scatter(
-            x=bonus_totals['ANO_REFER_FORMATTED'],
-            y=bonus_totals['Valor'],
-            text=[f"<b>R$ {v:,.0f}</b>" for v in bonus_totals['Valor']],
-            mode='text',
-            textposition='top center',
-            textfont=dict(size=12, color="black"),
-            showlegend=False
-        ), row=1, col=1)
+        # Adiciona o traço para Bônus se houver dados de Bônus. Ele sempre será a coluna 1 se existir.
+        if not bonus_totals.empty:
+            fig.add_trace(go.Scatter(
+                x=bonus_totals['ANO_REFER_FORMATTED'],
+                y=bonus_totals['Valor'],
+                text=[f"<b>R$ {v:,.0f}</b>" for v in bonus_totals['Valor']],
+                mode='text',
+                textposition='top center',
+                textfont=dict(size=12, color="black"),
+                showlegend=False
+            ), row=1, col=1)
 
-        # Faceta 2 (PLR)
-        fig.add_trace(go.Scatter(
-            x=plr_totals['ANO_REFER_FORMATTED'],
-            y=plr_totals['Valor'],
-            text=[f"<b>R$ {v:,.0f}</b>" for v in plr_totals['Valor']],
-            mode='text',
-            textposition='top center',
-            textfont=dict(size=12, color="black"),
-            showlegend=False
-        ), row=1, col=2)
+        # Adiciona o traço para PLR se houver dados de PLR.
+        if not plr_totals.empty:
+            # Determina a coluna correta para o PLR.
+            # Se também houver dados de bônus, PLR está na coluna 2. Senão, está na coluna 1.
+            col_idx = 2 if not bonus_totals.empty else 1
+            fig.add_trace(go.Scatter(
+                x=plr_totals['ANO_REFER_FORMATTED'],
+                y=plr_totals['Valor'],
+                text=[f"<b>R$ {v:,.0f}</b>" for v in plr_totals['Valor']],
+                mode='text',
+                textposition='top center',
+                textfont=dict(size=12, color="black"),
+                showlegend=False
+            ), row=1, col=col_idx)
 
         st.plotly_chart(fig, use_container_width=True)
         create_download_button(df_plot, f"evolucao_bonus_plr_{empresa}_{orgao}")
@@ -433,12 +434,12 @@ def page_bonus_plr(df: pd.DataFrame):
                 if row.get('PLR_ALVO', 0) > 0:
                     perc_plr_max = (row.get('PLR_MAX', 0) / row['PLR_ALVO']) * 100
                     st.metric(label="PLR (Máximo vs Alvo)", value=f"{perc_plr_max:.1f}%")
-
     else:
         st.info("Não há dados de Bônus ou PLR para exibir para a seleção atual.")
+    
+    # O restante da função permanece igual
     st.markdown("---")
     st.subheader("Ranking de Empresas por Bônus/PLR")
-    # ... (o resto do código não precisa de alteração)
     col_rank1, col_rank2, col_rank3 = st.columns(3)
     with col_rank1:
         ano_rank = st.selectbox("1. Selecione o Ano", sorted(df['ANO_REFER'].unique(), reverse=True), key='ano_bonus_rank')
