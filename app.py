@@ -144,9 +144,9 @@ def page_home():
     # use_container_width=True garante que a imagem se ajuste à largura da tela,
     # funcionando bem em qualquer dispositivo.
     st.image(
-        "https://github.com/tovarich86/pesq_rem_CVM/blob/main/Gemini_Generated_Image_k75a3hk75a3hk75a.png",
+        "https://raw.githubusercontent.com/tovarich86/pesq_rem_CVM/main/Gemini_Generated_Image_k75a3hk75a3hk75a.png",
         use_container_width=True,
-        caption="Análise de Dados, Tecnologia e Governança"
+        
     )
     
     st.markdown("""
