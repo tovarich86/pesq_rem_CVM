@@ -122,36 +122,70 @@ def page_remuneracao_consolidada(df: pd.DataFrame):
     """Página para análises do Bloco 2: Remuneração Total e Componentes."""
     st.header("Análise da Remuneração Consolidada")
 
-    col1, col2 = st.columns(2)
-    with col1:
-        orgao = st.selectbox("Selecione o Órgão", df['ORGAO_ADMINISTRACAO'].unique(), key='orgao_consolidado')
-    with col2:
-        anos = sorted(df['ANO_REFER'].unique())
-        ano_selecionado = st.selectbox("Selecione o Ano", anos, index=len(anos)-1, key='ano_consolidado')
-
-    df_filtered = df[(df['ORGAO_ADMINISTRACAO'] == orgao) & (df['ANO_REFER'] == ano_selecionado)]
-
-    st.subheader(f"Tendência da Remuneração Total Média para: {orgao}")
-    trend_data = df[df['ORGAO_ADMINISTRACAO'] == orgao].groupby('ANO_REFER')['TOTAL_REMUNERACAO_ORGAO'].mean().reset_index()
-    if not trend_data.empty:
-        fig = px.line(trend_data, x='ANO_REFER', y='TOTAL_REMUNERACAO_ORGAO', markers=True, title=f"Evolução da Remuneração Média Anual ({orgao})", labels={'ANO_REFER': 'Ano', 'TOTAL_REMUNERACAO_ORGAO': 'Remuneração Média (R$)'})
-        fig.update_layout(xaxis_type='category')
-        st.plotly_chart(fig, use_container_width=True)
-
-    st.subheader(f"Estrutura da Remuneração por Empresa em {ano_selecionado}")
-    empresa_selecionada = st.selectbox("Selecione uma Empresa para detalhar a estrutura", sorted(df_filtered['NOME_COMPANHIA'].unique()))
+    st.subheader("Evolução da Estrutura da Remuneração")
     
-    if empresa_selecionada:
-        df_empresa = df_filtered[df_filtered['NOME_COMPANHIA'] == empresa_selecionada]
-        total_fixa = df_empresa['TOTAL_REM_FIXA'].sum()
-        total_variavel = df_empresa['TOTAL_REM_VARIAVEL'].sum()
-        
-        if total_fixa + total_variavel > 0:
-            estrutura_data = pd.DataFrame({'Componente': ['Remuneração Fixa', 'Remuneração Variável'], 'Valor': [total_fixa, total_variavel]})
-            fig_pie = px.pie(estrutura_data, values='Valor', names='Componente', title=f'Composição da Remuneração para {empresa_selecionada}', hole=.3)
-            st.plotly_chart(fig_pie, use_container_width=True)
-        else:
-            st.info("Não há dados detalhados de remuneração para compor o gráfico de estrutura.")
+    # --- Filtros aprimorados ---
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        setor = st.selectbox("Selecione o Setor", sorted(df['SETOR_ATIVIDADE'].dropna().unique()), key='setor_consolidado')
+    
+    df_setor = df[df['SETOR_ATIVIDADE'] == setor]
+    
+    with col2:
+        orgao = st.selectbox("Selecione o Órgão", sorted(df_setor['ORGAO_ADMINISTRACAO'].unique()), key='orgao_consolidado')
+    
+    df_orgao = df_setor[df_setor['ORGAO_ADMINISTRACAO'] == orgao]
+
+    with col3:
+        empresa = st.selectbox("Selecione a Empresa", sorted(df_orgao['NOME_COMPANHIA'].unique()), key='empresa_consolidado')
+
+    # --- Preparação dos dados para o gráfico de barras empilhadas ---
+    df_empresa_filtrada = df_orgao[df_orgao['NOME_COMPANHIA'] == empresa]
+
+    # Componentes detalhados da remuneração
+    component_cols = {
+        'Salário': 'REM_FIXA_SALARIO',
+        'Benefícios': 'REM_FIXA_BENEFICIOS',
+        'Pós-Emprego': 'REM_FIXA_POS_EMPREGO',
+        'Bônus/PLR': 'REM_VAR_BONUS_PLR',
+        'Ações (do Bloco 2)': 'REM_VAR_ACOES',
+        'Outros (Fixo)': 'REM_FIXA_OUTROS',
+        'Outros (Variável)': 'REM_VAR_OUTROS',
+    }
+
+    # Garante que todas as colunas de componentes existam
+    for col in component_cols.values():
+        if col not in df_empresa_filtrada.columns:
+            df_empresa_filtrada[col] = 0
+
+    # Agrupa por ano e soma os componentes
+    yearly_data = df_empresa_filtrada.groupby('ANO_REFER')[[col for col in component_cols.values()]].sum().reset_index()
+
+    # Transforma os dados do formato 'largo' para 'longo' para o Plotly
+    df_plot = yearly_data.melt(id_vars=['ANO_REFER'], var_name='Componente', value_name='Valor')
+    
+    # Mapeia os nomes técnicos para nomes amigáveis para a legenda
+    friendly_names = {v: k for k, v in component_cols.items()}
+    df_plot['Componente'] = df_plot['Componente'].map(friendly_names)
+
+    if not df_plot.empty and df_plot['Valor'].sum() > 0:
+        fig = px.bar(
+            df_plot,
+            x='ANO_REFER',
+            y='Valor',
+            color='Componente',
+            title=f"Evolução dos Componentes da Remuneração para {empresa}<br><sub>Órgão: {orgao}</sub>",
+            labels={
+                'ANO_REFER': 'Ano do Exercício Social',
+                'Valor': 'Valor Total Anual (R$)',
+                'Componente': 'Componente da Remuneração'
+            },
+            text_auto='.2s'
+        )
+        fig.update_layout(xaxis_type='category', barmode='stack')
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("Não há dados de remuneração para exibir para a seleção atual.")
 
 
 def page_remuneracao_acoes(df: pd.DataFrame):
