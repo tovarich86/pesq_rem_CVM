@@ -64,6 +64,14 @@ def load_data(url: str) -> pd.DataFrame:
         
         df.rename(columns=actual_rename_dict, inplace=True)
 
+        # --- CORREÇÃO ROBUSTA PARA KEYERROR EM SETOR_ATIVIDADE ---
+        # Garante que a coluna de setor exista para evitar que os filtros quebrem.
+        if 'SETOR_ATIVIDADE' not in df.columns:
+            st.warning("Atenção: A coluna 'SETOR_ATIVIDADE' não foi encontrada. As análises por setor podem não funcionar como esperado.")
+            df['SETOR_ATIVIDADE'] = "Setor Não Informado" # Cria uma coluna placeholder
+        else:
+            df['SETOR_ATIVIDADE'] = df['SETOR_ATIVIDADE'].str.strip()
+
         # Converte todas as colunas numéricas de uma vez
         all_renamed_cols = list(rename_map.keys())
         for col in all_renamed_cols:
@@ -72,8 +80,7 @@ def load_data(url: str) -> pd.DataFrame:
                     df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
 
         # --- CORREÇÃO ROBUSTA: Cálculo dos Totais ---
-        # Calcula os totais somando os componentes para garantir que as colunas existam,
-        # resolvendo o KeyError de forma definitiva.
+        # Calcula os totais somando os componentes para garantir que as colunas existam.
         fixed_rem_components = ['REM_FIXA_SALARIO', 'REM_FIXA_BENEFICIOS', 'REM_FIXA_POS_EMPREGO', 'REM_FIXA_RESCISAO', 'REM_FIXA_OUTROS']
         variable_rem_components = ['REM_VAR_BONUS_PLR', 'REM_VAR_ACOES', 'REM_VAR_OUTROS']
         
@@ -88,9 +95,6 @@ def load_data(url: str) -> pd.DataFrame:
         if 'ANO_REFER' in df.columns:
             df['ANO_REFER'] = pd.to_numeric(df['ANO_REFER'], errors='coerce').dropna().astype(int)
         
-        if 'SETOR_ATIVIDADE' in df.columns:
-            df['SETOR_ATIVIDADE'] = df['SETOR_ATIVIDADE'].str.strip()
-
         return df
     except Exception as e:
         st.error(f"Erro crítico ao carregar ou processar os dados: {e}")
