@@ -115,6 +115,13 @@ def load_data(url: str) -> pd.DataFrame:
         st.error(f"Erro crítico ao carregar ou processar os dados: {e}")
         return pd.DataFrame()
 
+# --- Funções Auxiliares ---
+def get_default_index(options_list, default_value):
+    """Retorna o índice de um valor padrão em uma lista, ou 0 se não for encontrado."""
+    if default_value in options_list:
+        return options_list.index(default_value)
+    return 0
+
 # --- PÁGINAS DA APLICAÇÃO ---
 
 def page_home():
@@ -141,9 +148,7 @@ def page_remuneracao_individual(df: pd.DataFrame):
     col1, col2 = st.columns(2)
     with col1:
         orgaos_disponiveis = sorted(df['ORGAO_ADMINISTRACAO'].unique())
-        default_index = 0
-        if 'DIRETORIA ESTATUTARIA' in orgaos_disponiveis:
-            default_index = orgaos_disponiveis.index('DIRETORIA ESTATUTARIA')
+        default_index = get_default_index(orgaos_disponiveis, 'DIRETORIA ESTATUTARIA')
         orgao = st.selectbox("1. Selecione o Órgão", orgaos_disponiveis, index=default_index, key='orgao_ind')
     
     df_orgao = df[df['ORGAO_ADMINISTRACAO'] == orgao]
@@ -259,9 +264,7 @@ def page_componentes_remuneracao(df: pd.DataFrame):
         df_empresa = df[df['NOME_COMPANHIA'] == empresa]
         with col2:
             orgaos_disponiveis = sorted(df_empresa['ORGAO_ADMINISTRACAO'].unique())
-            default_index = 0
-            if 'DIRETORIA ESTATUTARIA' in orgaos_disponiveis:
-                default_index = orgaos_disponiveis.index('DIRETORIA ESTATUTARIA')
+            default_index = get_default_index(orgaos_disponiveis, 'DIRETORIA ESTATUTARIA')
             orgao = st.selectbox("2. Selecione o Órgão", orgaos_disponiveis, index=default_index, key='orgao_comp_2')
         with col3:
             calc_type = st.radio("Calcular por:", ["Total", "Média por Membro"], key='calc_type_2', horizontal=True)
@@ -306,9 +309,7 @@ def page_componentes_remuneracao(df: pd.DataFrame):
             ano = st.selectbox("1. Selecione o Ano", sorted(df['ANO_REFER'].unique(), reverse=True), key='ano_comp_3')
         with col2:
             orgaos_disponiveis = sorted(df['ORGAO_ADMINISTRACAO'].unique())
-            default_index = 0
-            if 'DIRETORIA ESTATUTARIA' in orgaos_disponiveis:
-                default_index = orgaos_disponiveis.index('DIRETORIA ESTATUTARIA')
+            default_index = get_default_index(orgaos_disponiveis, 'DIRETORIA ESTATUTARIA')
             orgao = st.selectbox("2. Selecione o Órgão", orgaos_disponiveis, index=default_index, key='orgao_comp_3')
         
         rank_options = {'Remuneração Total': 'TOTAL_REMUNERACAO_ORGAO', **component_cols}
@@ -347,9 +348,7 @@ def page_bonus_plr(df: pd.DataFrame):
     
     with col2:
         orgaos_disponiveis = sorted(df_empresa['ORGAO_ADMINISTRACAO'].unique())
-        default_index = 0
-        if 'DIRETORIA ESTATUTARIA' in orgaos_disponiveis:
-            default_index = orgaos_disponiveis.index('DIRETORIA ESTATUTARIA')
+        default_index = get_default_index(orgaos_disponiveis, 'DIRETORIA ESTATUTARIA')
         orgao = st.selectbox("2. Selecione o Órgão", orgaos_disponiveis, index=default_index, key='orgao_bonus_1')
     
     with col3:
