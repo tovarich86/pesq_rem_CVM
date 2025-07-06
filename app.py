@@ -174,37 +174,37 @@ def page_remuneracao_individual(df: pd.DataFrame):
     else:
         st.warning("Nenhum dado encontrado para a combinação de filtros no período de 2022-2024.")
 
-    # --- NOVA ANÁLISE: GRÁFICO DE DISPERSÃO POR SETOR ---
+    # --- NOVA ANÁLISE: GRÁFICO BOX PLOT POR SETOR ---
     st.markdown("---")
-    st.subheader("Dispersão da Remuneração no Setor")
+    st.subheader("Distribuição da Remuneração por Setor")
 
-    col_scatter1, col_scatter2 = st.columns(2)
-    with col_scatter1:
-        ano_scatter = st.selectbox("Selecione o Ano para a Dispersão", sorted(df['ANO_REFER'].unique(), reverse=True), key='ano_scatter')
-    with col_scatter2:
+    col_box1, col_box2 = st.columns(2)
+    with col_box1:
+        ano_box = st.selectbox("Selecione o Ano para a Distribuição", sorted(df['ANO_REFER'].unique(), reverse=True), key='ano_box')
+    with col_box2:
         metric_options = {'Máxima': 'REM_MAXIMA_INDIVIDUAL', 'Média': 'REM_MEDIA_INDIVIDUAL', 'Mínima': 'REM_MINIMA_INDIVIDUAL'}
-        metrica_selecionada = st.selectbox("Selecione a Métrica", list(metric_options.keys()), key='metrica_scatter')
+        metrica_selecionada = st.selectbox("Selecione a Métrica", list(metric_options.keys()), key='metrica_box')
 
-    # Filtra os dados para o gráfico de dispersão
+    # Filtra os dados para o gráfico de box plot
     # Usa o 'orgao' já selecionado na parte de cima da página
-    df_scatter = df[(df['ANO_REFER'] == ano_scatter) & (df['ORGAO_ADMINISTRACAO'] == orgao)]
+    df_box = df[(df['ANO_REFER'] == ano_box) & (df['ORGAO_ADMINISTRACAO'] == orgao)]
     
     coluna_metrica = metric_options[metrica_selecionada]
-    df_scatter = df_scatter[df_scatter[coluna_metrica] > 0]
+    df_box = df_box[df_box[coluna_metrica] > 0]
 
-    if not df_scatter.empty:
-        fig_scatter = px.scatter(
-            df_scatter,
-            x='NOME_COMPANHIA',
+    if not df_box.empty:
+        fig_box = px.box(
+            df_box,
+            x='SETOR_ATIVIDADE',
             y=coluna_metrica,
-            size=coluna_metrica,
-            hover_name='NOME_COMPANHIA',
             color='SETOR_ATIVIDADE',
-            title=f"Dispersão da Remuneração {metrica_selecionada} para o órgão '{orgao}' em {ano_scatter}",
-            labels={coluna_metrica: f"Remuneração {metrica_selecionada} (R$)", 'NOME_COMPANHIA': 'Empresa'}
+            hover_name='NOME_COMPANHIA',
+            points="all", # Mostra todos os pontos (empresas)
+            title=f"Distribuição da Remuneração {metrica_selecionada} por Setor para '{orgao}' em {ano_box}",
+            labels={coluna_metrica: f"Remuneração {metrica_selecionada} (R$)", 'SETOR_ATIVIDADE': 'Setor de Atividade'}
         )
-        fig_scatter.update_xaxes(tickangle=45, showticklabels=False) # Esconde os nomes no eixo X para não poluir
-        st.plotly_chart(fig_scatter, use_container_width=True)
+        fig_box.update_xaxes(tickangle=45)
+        st.plotly_chart(fig_box, use_container_width=True)
     else:
         st.warning(f"Não há dados de Remuneração {metrica_selecionada} para exibir para os filtros selecionados.")
 
