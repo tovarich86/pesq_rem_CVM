@@ -27,10 +27,10 @@ def load_data(url: str) -> pd.DataFrame:
         pd.DataFrame: O DataFrame processado e pronto para uso.
     """
     try:
-        # --- CORREÇÃO DO ERRO ---
-        # Adicionado sep=';' para corrigir o erro de tokenização, comum em CSVs brasileiros.
-        # Adicionado encoding='latin-1' para garantir a leitura correta de caracteres acentuados.
-        df = pd.read_csv(url, sep=';', encoding='latin-1')
+        # --- CORREÇÃO DO ERRO DE LEITURA ---
+        # Alterado para usar vírgula (,) como separador e o engine 'python' para maior robustez,
+        # corrigindo o KeyError.
+        df = pd.read_csv(url, sep=',', encoding='latin-1', engine='python')
 
         # --- Limpeza e Renomeação de Colunas ---
         # Padroniza os nomes das colunas para facilitar o acesso e a consistência com as funções
@@ -54,9 +54,7 @@ def load_data(url: str) -> pd.DataFrame:
         ]
         for col in numeric_cols:
             if col in df.columns:
-                # --- CORREÇÃO DO FORMATO NUMÉRICO ---
-                # Converte os números do formato brasileiro (ex: 1.234,56) para o formato padrão (ex: 1234.56)
-                df[col] = df[col].astype(str).str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
+                # A conversão para numérico é feita diretamente, assumindo que o decimal é ponto.
                 df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
 
         # Garante que a coluna de ano seja do tipo inteiro
@@ -112,7 +110,7 @@ def page_visao_geral(df: pd.DataFrame):
             "Selecione o Ano para o Ranking",
             options=anos,
             index=len(anos)-1, # Padrão para o último ano
-            key='orgao_geral'
+            key='ano_geral'
         )
 
     # --- Análise 1: Tendência da Remuneração ---
