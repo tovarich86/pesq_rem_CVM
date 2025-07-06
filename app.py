@@ -138,7 +138,8 @@ def format_year(year):
 
 def page_home():
     st.title("Análise Interativa de Remuneração de Administradores")
-    st.image("https://images.unsplash.com/photo-1665686306574-1ace09918530?q=80&w=2070&auto=format&fit=crop", use_column_width=True)
+    # Imagem temática para a página inicial
+    st.image("https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop", caption="Análise de Dados, Tecnologia e Governança")
     st.markdown("""
     Esta ferramenta foi desenvolvida para permitir a análise interativa dos dados de remuneração de administradores de companhias abertas brasileiras, utilizando como base o arquivo de dados compilado e disponibilizado. A metodologia empregada busca replicar e expandir as análises apresentadas em pesquisas de mercado, como a do IBGC.
     """)
@@ -438,9 +439,9 @@ def page_estatisticas_quartis(df: pd.DataFrame):
         membros_col = 'NUM_MEMBROS_TOTAL'
         
     if calc_type == "Média por Membro":
-        df_filtered = df_filtered[df_filtered[membros_col] > 0]
-        df_filtered[col_metrica] = df_filtered[col_metrica] / df_filtered[membros_col]
-        
+        df_filtered = df_filtered[df_filtered[membros_col] > 0].copy()
+        df_filtered.loc[:, col_metrica] = df_filtered[col_metrica] / df_filtered[membros_col]
+    
     df_filtered = df_filtered[df_filtered[col_metrica] > 0]
     
     if not df_filtered.empty:
