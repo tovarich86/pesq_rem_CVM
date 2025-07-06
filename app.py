@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import warnings
 
 # Ignorar avisos de depreciação futuros do pandas que podem poluir a saída
@@ -18,7 +19,8 @@ def load_data(url: str) -> pd.DataFrame:
     para facilitar as análises, espelhando a estrutura de blocos da CVM.
     """
     try:
-        df = pd.read_csv(url, sep=',', encoding='latin-1', engine='python')
+        # CORREÇÃO DE ACENTUAÇÃO: Alterado encoding para utf-8-sig
+        df = pd.read_csv(url, sep=',', encoding='utf-8-sig', engine='python')
         df.columns = df.columns.str.strip()
 
         # Mapeamento completo e flexível das colunas para nomes padronizados.
@@ -46,7 +48,7 @@ def load_data(url: str) -> pd.DataFrame:
             'DESVIO_PADRAO_INDIVIDUAL': ['Desvio_Padrao_Remuneracao_Individual_Reconhecida_Exercicio', 'DESVIO_PADRAO'],
 
             # Bloco 3: Componentes da Remuneração Total
-            'NUM_MEMBROS_TOTAL': ['Quantidade_Total_Membros_Remunerados_Orgao'],
+            'NUM_MEMBROS_TOTAL': ['QTD_MEMBROS_REMUNERADOS_TOTAL'],
             'REM_FIXA_SALARIO': ['SALARIO'],
             'REM_FIXA_BENEFICIOS': ['BENEFICIOS_DIRETOS_INDIRETOS'],
             'REM_FIXA_COMITES': ['PARTICIPACOES_COMITES'],
@@ -176,7 +178,6 @@ def page_remuneracao_individual(df: pd.DataFrame):
     else:
         st.warning("Nenhum dado encontrado para a combinação de filtros no período de 2022-2024.")
 
-    # --- ANÁLISE APRIMORADA: GRÁFICO DE BARRAS POR SETOR ---
     st.markdown("---")
     st.subheader("Ranking de Empresas por Remuneração Individual")
 
@@ -187,23 +188,15 @@ def page_remuneracao_individual(df: pd.DataFrame):
         metric_options = {'Máxima': 'REM_MAXIMA_INDIVIDUAL', 'Média': 'REM_MEDIA_INDIVIDUAL', 'Mínima': 'REM_MINIMA_INDIVIDUAL'}
         metrica_selecionada = st.selectbox("Selecione a Métrica", list(metric_options.keys()), key='metrica_bar')
 
-    # Filtra os dados para o gráfico de barras
-    # Usa o 'orgao' já selecionado na parte de cima da página
     df_bar = df[(df['ANO_REFER'] == ano_bar) & (df['ORGAO_ADMINISTRACAO'] == orgao)]
-    
     coluna_metrica = metric_options[metrica_selecionada]
     df_bar = df_bar[df_bar[coluna_metrica] > 0]
-
-    # Pega o Top 15
     df_top_companies = df_bar.nlargest(15, coluna_metrica)
 
     if not df_top_companies.empty:
         fig_bar = px.bar(
-            df_top_companies.sort_values(by=coluna_metrica), # Ordena para melhor visualização
-            x=coluna_metrica,
-            y='NOME_COMPANHIA',
-            orientation='h',
-            text_auto='.2s',
+            df_top_companies.sort_values(by=coluna_metrica),
+            x=coluna_metrica, y='NOME_COMPANHIA', orientation='h', text_auto='.2s',
             title=f"Top 15 Empresas por Remuneração {metrica_selecionada} ({orgao}, {ano_bar})",
             labels={coluna_metrica: f"Remuneração {metrica_selecionada} (R$)", 'NOME_COMPANHIA': 'Empresa'}
         )
@@ -212,82 +205,69 @@ def page_remuneracao_individual(df: pd.DataFrame):
     else:
         st.warning(f"Não há dados de Remuneração {metrica_selecionada} para exibir para os filtros selecionados.")
 
-
 def page_componentes_remuneracao(df: pd.DataFrame):
     st.header("Análise dos Componentes da Remuneração Total")
     
     # --- Filtros ---
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
     with col1:
-        orgao = st.selectbox("1. Selecione o Órgão", sorted(df['ORGAO_ADMINISTRACAO'].unique()), key='orgao_comp')
-    df_orgao = df[df['ORGAO_ADMINISTRACAO'] == orgao]
-    
+        empresa = st.selectbox("1. Selecione a Empresa", sorted(df['NOME_COMPANHIA'].unique()), key='empresa_comp')
+    df_empresa = df[df['NOME_COMPANHIA'] == empresa]
     with col2:
-        empresas_disponiveis = sorted(df_orgao['NOME_COMPANHIA'].unique())
-        if not empresas_disponiveis:
-            st.warning("Nenhuma empresa encontrada para o órgão selecionado.")
-            st.stop()
-        empresa = st.selectbox("2. Selecione a Empresa", empresas_disponiveis, key='empresa_comp')
-        
-    df_empresa_orgao = df_orgao[df_orgao['NOME_COMPANHIA'] == empresa]
-
-    with col3:
-        ano = st.selectbox("3. Selecione o Ano", sorted(df_empresa_orgao['ANO_REFER'].unique(), reverse=True), key='ano_comp')
-
-    df_filtered = df_empresa_orgao[df_empresa_orgao['ANO_REFER'] == ano]
-
-    # --- Exibição do Número de Membros ---
-    if not df_filtered.empty:
-        num_membros = df_filtered['NUM_MEMBROS_TOTAL'].iloc[0]
-        st.metric("Número de Membros Remunerados", f"{num_membros:.0f}")
-    else:
-        st.warning("Nenhum dado encontrado para a seleção atual.")
-        st.stop()
+        ano = st.selectbox("2. Selecione o Ano", sorted(df_empresa['ANO_REFER'].unique(), reverse=True), key='ano_comp')
     
-    st.markdown("---")
-
-    # --- Seleção do Tipo de Visão ---
-    st.subheader("Selecione a Visão de Análise")
-    visao = st.radio(
-        "Escolha como visualizar os dados:",
-        ("Composição da Remuneração", "Total Agregado vs. Média por Membro"),
-        horizontal=True,
-        key='visao_comp'
-    )
-
-    if visao == "Composição da Remuneração":
-        component_cols = {
-            'Salário': 'REM_FIXA_SALARIO', 'Benefícios': 'REM_FIXA_BENEFICIOS', 'Comitês': 'REM_FIXA_COMITES',
-            'Bônus': 'REM_VAR_BONUS', 'PLR': 'REM_VAR_PLR', 'Comissões': 'REM_VAR_COMISSOES',
-            'Pós-Emprego': 'REM_POS_EMPREGO', 'Cessação de Cargo': 'REM_CESSACAO_CARGO',
-            'Baseada em Ações': 'REM_ACOES_BLOCO3', 'Outros': 'REM_FIXA_OUTROS'
-        }
-        
-        data_plot = {'Componente': [], 'Valor': []}
-        for name, col in component_cols.items():
-            if col in df_filtered.columns and not df_filtered[col].empty:
-                data_plot['Componente'].append(name)
-                data_plot['Valor'].append(df_filtered[col].iloc[0])
-
-        df_plot = pd.DataFrame(data_plot)
+    df_filtered = df_empresa[df_empresa['ANO_REFER'] == ano]
+    
+    # --- Preparação dos dados ---
+    component_cols = {
+        'Salário': 'REM_FIXA_SALARIO', 'Benefícios': 'REM_FIXA_BENEFICIOS', 'Comitês': 'REM_FIXA_COMITES',
+        'Bônus': 'REM_VAR_BONUS', 'PLR': 'REM_VAR_PLR', 'Comissões': 'REM_VAR_COMISSOES',
+        'Pós-Emprego': 'REM_POS_EMPREGO', 'Cessação': 'REM_CESSACAO_CARGO',
+        'Ações': 'REM_ACOES_BLOCO3', 'Outros': 'REM_FIXA_OUTROS'
+    }
+    
+    # Agrupa por órgão e soma os componentes
+    df_grouped = df_filtered.groupby('ORGAO_ADMINISTRACAO')[[col for col in component_cols.values() if col in df_filtered.columns]].sum()
+    
+    # Adiciona a soma total para usar no texto do gráfico
+    df_grouped['Total'] = df_grouped.sum(axis=1)
+    df_grouped = df_grouped[df_grouped['Total'] > 0] # Remove órgãos sem remuneração
+    
+    if not df_grouped.empty:
+        # Transforma os dados para o formato 'longo' para o Plotly
+        df_plot = df_grouped.drop(columns='Total').reset_index().melt(
+            id_vars='ORGAO_ADMINISTRACAO',
+            var_name='Componente',
+            value_name='Valor'
+        )
         df_plot = df_plot[df_plot['Valor'] > 0]
-        
-        if not df_plot.empty:
-            fig = px.pie(df_plot, names='Componente', values='Valor', title=f"Composição da Remuneração em {ano}", hole=.3)
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("Não há dados de componentes para exibir para a seleção atual.")
+        df_plot['Componente'] = df_plot['Componente'].map({v: k for k, v in component_cols.items()})
 
-    elif visao == "Total Agregado vs. Média por Membro":
-        total = df_filtered['TOTAL_REMUNERACAO_ORGAO'].iloc[0]
-        if num_membros > 0:
-            media_por_membro = total / num_membros
-        else:
-            media_por_membro = 0
-            
-        col_metric1, col_metric2 = st.columns(2)
-        col_metric1.metric("Remuneração Total do Órgão", f"R$ {total:,.2f}")
-        col_metric2.metric("Remuneração Média por Membro", f"R$ {media_por_membro:,.2f}")
+        # --- Criação do Gráfico ---
+        fig = px.bar(
+            df_plot,
+            x='ORGAO_ADMINISTRACAO',
+            y='Valor',
+            color='Componente',
+            title=f"Composição da Remuneração por Órgão para {empresa} em {ano}",
+            labels={'ORGAO_ADMINISTRACAO': 'Órgão de Administração', 'Valor': 'Valor Total Anual (R$)'}
+        )
+        fig.update_layout(barmode='stack')
+
+        # Adiciona o texto com o valor total em cima de cada barra
+        totals = df_grouped['Total']
+        fig.add_trace(go.Scatter(
+            x=totals.index,
+            y=totals,
+            text=[f"<b>R$ {val:,.0f}</b>" for val in totals],
+            mode='text',
+            textposition='top center',
+            showlegend=False
+        ))
+        
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("Não há dados de componentes para exibir para a seleção atual.")
 
 
 def page_remuneracao_acoes(df: pd.DataFrame):
