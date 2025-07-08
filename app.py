@@ -169,7 +169,7 @@ def page_home():
         * Qualidade do FRE: A precisão depende da correção do Formulário de Referência (FRE). Inconsistências são comuns e podem causar distorções.
         * Remuneração via Controladores: Não inclui valores pagos por controladores ou outras empresas do grupo, podendo subestimar a remuneração total.
         * Dados de 2025: Representam a proposta aprovada, não o valor efetivamente pago.
-        Valide sempre os dados com a fonte de origem antes de qualquer uso. O autor não se responsabiliza por usos indevidos.
+        * Valide sempre os dados com a fonte de origem antes de qualquer uso. O autor não se responsabiliza por usos indevidos.
         """)
 
 
