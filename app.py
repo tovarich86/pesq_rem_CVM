@@ -156,24 +156,20 @@ def page_home():
             * Componentes da Remuneração Total (Fixa e Variável). Fonte item 8.2 FRE.
             * Métricas de Bônus e PLR (Alvo, Pago, etc.) Fonte Item 8.3 FRE.
 
-        **2. Tratamento e Limpeza dos Dados:**
-        * **Padronização de Nomes:** Ao carregar, o aplicativo renomeia as colunas do arquivo para um formato padronizado, garantindo a resiliência do código a pequenas variações nos nomes das colunas.
-        * **Limpeza de Dados Categóricos:** Colunas de texto como `NOME_COMPANHIA`, `SETOR_ATIVIDADE` e `ORGAO_ADMINISTRACAO` são automaticamente convertidas para maiúsculas e têm espaços em branco removidos, evitando que entradas como "Ambev" e "AMBEV " sejam tratadas como categorias diferentes.
-        * **Tratamento de Nulos:** Valores numéricos ausentes ou não preenchidos no arquivo original são convertidos para `0` para evitar erros de cálculo.
-
-        **3. Fórmulas e Cálculos:**
+        **2. Fórmulas e Cálculos:**
         * **Média por Membro:** Quando a opção "Média por Membro" é selecionada, o cálculo é realizado da seguinte forma:
             > *Média = Valor Total do Componente / Número de Membros Remunerados do Bloco*
         * **Quartis:** Na página de "Análise Estatística", os quartis são calculados utilizando a função `.describe()` da biblioteca Pandas sobre a série de dados de remuneração para cada setor.
         """)
         st.subheader("Limitações")
         st.markdown("""
-        É fundamental que o usuário esteja ciente das seguintes limitações, inerentes à fonte dos dados e à natureza desta análise:
-
-        1.  **Qualidade dos Dados de Origem:** A precisão das análises depende inteiramente da qualidade e da correção do preenchimento do Formulário de Referência (FRE) pelas companhias. São comuns inconsistências como número de membros incorreto, valores de remuneração zerados ou ausentes, o que pode levar a distorções.
-        2.  **Remuneração via Controladores:** Esta análise considera apenas os valores pagos diretamente pela companhia. Remunerações pagas por controladores, holdings ou outras empresas do grupo não são capturadas, o que pode subestimar o valor total recebido por alguns administradores.
-        3.  **Dados de 2025 são Projeções:** Os valores referentes ao ano de 2025 representam a **proposta de remuneração aprovada**, e não necessariamente o valor que será efetivamente pago.
-        4.  **Arquivo CSV como Única Fonte:** O aplicativo depende exclusivamente do arquivo CSV fornecido. Quaisquer erros de compilação, extração ou tratamento prévio neste arquivo serão refletidos diretamente nas análises.
+        Aviso: Protótipo e Limitações dos Dados
+        Este aplicativo é um protótipo. Os dados aqui exibidos não devem ser usados para fins profissionais ou tomadas de decisão críticas sem validação.
+        Principais Limitações:
+        * Qualidade do FRE: A precisão depende da correção do Formulário de Referência (FRE). Inconsistências são comuns e podem causar distorções.
+        * Remuneração via Controladores: Não inclui valores pagos por controladores ou outras empresas do grupo, podendo subestimar a remuneração total.
+        * Dados de 2025: Representam a proposta aprovada, não o valor efetivamente pago.
+        Valide sempre os dados com a fonte de origem antes de qualquer uso. O autor não se responsabiliza por usos indevidos.
         """)
 
 
