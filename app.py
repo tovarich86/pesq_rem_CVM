@@ -363,7 +363,7 @@ def page_bonus_plr(df: pd.DataFrame):
         
         # O template "streamlit" garante que o gráfico siga o tema da aplicação
         fig = px.bar(df_plot, x='ANO_REFER_FORMATTED', y='Valor', color='Métrica', 
-                     barmode='stack',
+                     barmode='group',
                      facet_col='Tipo', 
                      title=f"Evolução de Bônus e PLR para {empresa} ({orgao})", 
                      labels={'ANO_REFER_FORMATTED': 'Ano', 'Valor': f'Valor {calc_type} (R$)'},
