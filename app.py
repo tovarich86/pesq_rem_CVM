@@ -371,40 +371,40 @@ def page_bonus_plr(df: pd.DataFrame):
         
         fig.update_xaxes(type='category')
 
-        totals_df = df_plot.groupby(['ANO_REFER_FORMATTED', 'Tipo'])['Valor'].sum().reset_index()
+        #totals_df = df_plot.groupby(['ANO_REFER_FORMATTED', 'Tipo'])['Valor'].sum().reset_index()
         
-        bonus_totals = totals_df[totals_df['Tipo'] == 'Bônus']
-        plr_totals = totals_df[totals_df['Tipo'] == 'PLR']
+        #bonus_totals = totals_df[totals_df['Tipo'] == 'Bônus']
+        #plr_totals = totals_df[totals_df['Tipo'] == 'PLR']
 
-        if not bonus_totals.empty:
-            fig.add_trace(go.Scatter(
-                x=bonus_totals['ANO_REFER_FORMATTED'],
-                y=bonus_totals['Valor'],
-                text=[f"<b>R$ {v:,.0f}</b>" for v in bonus_totals['Valor']],
-                mode='text',
-                textposition='top center',
+        #if not bonus_totals.empty:
+        #    fig.add_trace(go.Scatter(
+        #        x=bonus_totals['ANO_REFER_FORMATTED'],
+        #        y=bonus_totals['Valor'],
+        #        text=[f"<b>R$ {v:,.0f}</b>" for v in bonus_totals['Valor']],
+        #        mode='text',
+        #        textposition='top center',
                 # CORREÇÃO: Removido 'color="black"' para permitir que a cor seja automática
-                textfont=dict(size=12), 
-                showlegend=False
-            ), row=1, col=1)
+        #        textfont=dict(size=12), 
+        #        showlegend=False
+        #    ), row=1, col=1)
 
-        if not plr_totals.empty:
-            col_idx = 2 if not bonus_totals.empty else 1
-            fig.add_trace(go.Scatter(
-                x=plr_totals['ANO_REFER_FORMATTED'],
-                y=plr_totals['Valor'],
-                text=[f"<b>R$ {v:,.0f}</b>" for v in plr_totals['Valor']],
-                mode='text',
-                textposition='top center',
-                # CORREÇÃO: Removido 'color="black"' para permitir que a cor seja automática
-                textfont=dict(size=12),
-                showlegend=False
-            ), row=1, col=col_idx)
+        #if not plr_totals.empty:
+        #    col_idx = 2 if not bonus_totals.empty else 1
+        #    fig.add_trace(go.Scatter(
+        #        x=plr_totals['ANO_REFER_FORMATTED'],
+        #        y=plr_totals['Valor'],
+        #        text=[f"<b>R$ {v:,.0f}</b>" for v in plr_totals['Valor']],
+        #        mode='text',
+        #        textposition='top center',
+        #        # CORREÇÃO: Removido 'color="black"' para permitir que a cor seja automática
+        #        textfont=dict(size=12),
+        #        showlegend=False
+        #    ), row=1, col=col_idx)
 
         st.plotly_chart(fig, use_container_width=True)
         create_download_button(df_plot, f"evolucao_bonus_plr_{empresa}_{orgao}")
 
-        # O restante da função permanece o mesmo...
+
         st.subheader("Performance: % do Alvo Efetivamente Pago")
         perf_cols = st.columns(len(yearly_data))
         for i, row in yearly_data.iterrows():
