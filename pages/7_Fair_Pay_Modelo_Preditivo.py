@@ -146,10 +146,9 @@ if confianca is not None:
     if confianca < 0:
         st.error(f"📉 **Confiança da IA (R²): {confianca:.1%}** | O mercado selecionado é caótico. As empresas pagam valores tão discrepantes que a IA não conseguiu encontrar uma regra matemática óbvia.")
     elif confianca < 0.3:
-        st.warning(f"📊 **Confiança da IA (R²): {confianca:.1%}** | Confiança Moderada. A IA encontrou tendências, mas existem muitos casos "fora da curva" nesta amostra.")
+        st.warning(f"📊 **Confiança da IA (R²): {confianca:.1%}** | Confiança Moderada. A IA encontrou tendências, mas existem muitos casos 'fora da curva' nesta amostra.")
     else:
         st.success(f"✅ **Confiança da IA (R²): {confianca:.1%}** | Alta Precisão! A IA mapeou com clareza a regra de pagamento deste grupo de {n_amostras} empresas.")
-
 # ==========================================
 # EXPLAINABLE AI (IMPORTÂNCIA DAS VARIÁVEIS)
 # ==========================================
