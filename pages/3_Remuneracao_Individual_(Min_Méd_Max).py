@@ -4,7 +4,7 @@ import plotly.express as px
 # Importa as nossas funções partilhadas do utils.py
 from utils import get_default_index, create_download_button, renderizar_sidebar_global, format_year
 
-st.set_page_config(layout="wide", page_title="Remuneração Individual", page_icon="💰")
+st.set_page_config(layout="wide", page_title="Remuneração Individual (Mín, Méd, Max)", page_icon="💰")
 
 # Verifica se os dados já foram carregados na Home. Se não, avisa o utilizador.
 if 'df_completo' not in st.session_state:
