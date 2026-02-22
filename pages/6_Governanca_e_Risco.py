@@ -38,26 +38,24 @@ st.markdown("""
 O **Múltiplo de Dispersão** divide a Maior Remuneração pela Média da Diretoria. Valores muito altos indicam uma concentração excessiva de orçamento no CEO (Key Person Risk) e uma estrutura menos colaborativa.
 """)
 
-df_diretoria = df[(df['ANO_REFER'] == ano_selecionado) & (df['ORGAO_ADMINISTRACAO'] == 'DIRETORIA ESTATUTARIA')].copy()
+# Busca flexível: pega qualquer coisa que tenha "DIRETORIA", ignorando maiúsculas/minúsculas e acentos
+df_diretoria = df[(df['ANO_REFER'] == ano_selecionado) & (df['ORGAO_ADMINISTRACAO'].str.contains('DIRETORIA', case=False, na=False))].copy()
 
 # Cálculo do CEO Pay Slice
 df_diretoria['CEO_Pay_Slice'] = 0.0
 
-# Verifica se as colunas existem para evitar erros
 if 'REM_MEDIA_INDIVIDUAL' in df_diretoria.columns and 'REM_MAXIMA_INDIVIDUAL' in df_diretoria.columns:
     mascara_validos = (df_diretoria['REM_MEDIA_INDIVIDUAL'] > 0) & (df_diretoria['REM_MAXIMA_INDIVIDUAL'] > 0)
     df_diretoria.loc[mascara_validos, 'CEO_Pay_Slice'] = df_diretoria.loc[mascara_validos, 'REM_MAXIMA_INDIVIDUAL'] / df_diretoria.loc[mascara_validos, 'REM_MEDIA_INDIVIDUAL']
 
 df_cps = df_diretoria[df_diretoria['CEO_Pay_Slice'] > 0].sort_values(by='CEO_Pay_Slice', ascending=False)
 
-# --- ESCUDO ANTI-NaN: Verifica se a lista está vazia ---
 if df_cps.empty:
-    st.info(f"📊 As empresas da amostra ainda não reportaram dados válidos de Remuneração Máxima e Média para o ano de **{ano_selecionado}**. Tente selecionar um ano anterior (ex: 2024).")
+    st.info(f"📊 As empresas da amostra ainda não reportaram dados válidos de Remuneração Máxima e Média para o ano de **{ano_selecionado}**. Tente selecionar um ano anterior.")
 else:
     col1_cps, col2_cps = st.columns([2, 1])
 
     with col1_cps:
-        # Mostra o Top 15 empresas com maior dispersão
         fig_cps = px.bar(
             df_cps.head(15), 
             x='CEO_Pay_Slice', 
@@ -78,12 +76,13 @@ else:
         mediana_mercado = df_cps['CEO_Pay_Slice'].median()
         maximo_mercado = df_cps['CEO_Pay_Slice'].max()
         
-        # O pd.notna garante que se ainda assim algo falhar, ele mostra N/A em vez de dar erro
         st.metric("Média de Dispersão", f"{media_mercado:.1f}x" if pd.notna(media_mercado) else "N/A")
         st.metric("Mediana de Dispersão", f"{mediana_mercado:.1f}x" if pd.notna(mediana_mercado) else "N/A")
         st.metric("Pico do Mercado (Máximo)", f"{maximo_mercado:.1f}x" if pd.notna(maximo_mercado) else "N/A")
         
         st.write("*(Exemplo: 3.0x significa que a maior remuneração é o triplo da média da própria diretoria).*")
+
+st.markdown("---")
 
 # ==========================================
 # 2. EQUILÍBRIO DE PODER (Conselho vs Diretoria)
@@ -95,34 +94,43 @@ Analisa se o Conselho de Administração é bem remunerado o suficiente para fis
 
 df_ano = df[df['ANO_REFER'] == ano_selecionado].copy()
 
-# Agregar total por empresa e por órgão
-df_gov = df_ano[df_ano['ORGAO_ADMINISTRACAO'].isin(['DIRETORIA ESTATUTARIA', 'CONSELHO DE ADMINISTRACAO'])]
+# Criar uma coluna padronizada para o Pivot (imune a acentos do CSV)
+def padronizar_orgao(nome):
+    nome_upper = str(nome).upper()
+    if 'DIRETORIA' in nome_upper: return 'DIRETORIA'
+    if 'CONSELHO' in nome_upper: return 'CONSELHO'
+    return 'OUTROS'
+
+df_ano['Orgao_Padrao'] = df_ano['ORGAO_ADMINISTRACAO'].apply(padronizar_orgao)
+
+# Agregar total por empresa e por órgão padrão
+df_gov = df_ano[df_ano['Orgao_Padrao'].isin(['DIRETORIA', 'CONSELHO'])]
 df_gov_pivot = df_gov.pivot_table(
     index='NOME_COMPANHIA', 
-    columns='ORGAO_ADMINISTRACAO', 
+    columns='Orgao_Padrao', 
     values='TOTAL_REMUNERACAO_ORGAO', 
     aggfunc='sum'
 ).fillna(0).reset_index()
 
 # Filtra empresas que têm as duas informações
-if 'DIRETORIA ESTATUTARIA' in df_gov_pivot.columns and 'CONSELHO DE ADMINISTRACAO' in df_gov_pivot.columns:
-    df_gov_pivot = df_gov_pivot[(df_gov_pivot['DIRETORIA ESTATUTARIA'] > 0) & (df_gov_pivot['CONSELHO DE ADMINISTRACAO'] > 0)]
+if 'DIRETORIA' in df_gov_pivot.columns and 'CONSELHO' in df_gov_pivot.columns:
+    df_gov_pivot = df_gov_pivot[(df_gov_pivot['DIRETORIA'] > 0) & (df_gov_pivot['CONSELHO'] > 0)]
     
     # Calcular Rácio (Diretoria / Conselho)
-    df_gov_pivot['Racio_Poder'] = df_gov_pivot['DIRETORIA ESTATUTARIA'] / df_gov_pivot['CONSELHO DE ADMINISTRACAO']
+    df_gov_pivot['Racio_Poder'] = df_gov_pivot['DIRETORIA'] / df_gov_pivot['CONSELHO']
     
     # Adicionar formatações para o hover do gráfico
-    df_gov_pivot['Diretoria_Formatado'] = df_gov_pivot['DIRETORIA ESTATUTARIA'].apply(formata_brl_int)
-    df_gov_pivot['Conselho_Formatado'] = df_gov_pivot['CONSELHO DE ADMINISTRACAO'].apply(formata_brl_int)
+    df_gov_pivot['Diretoria_Formatado'] = df_gov_pivot['DIRETORIA'].apply(formata_brl_int)
+    df_gov_pivot['Conselho_Formatado'] = df_gov_pivot['CONSELHO'].apply(formata_brl_int)
     
     fig_gov = px.scatter(
         df_gov_pivot, 
-        x='CONSELHO DE ADMINISTRACAO', 
-        y='DIRETORIA ESTATUTARIA', 
+        x='CONSELHO', 
+        y='DIRETORIA', 
         hover_name='NOME_COMPANHIA',
-        hover_data={'CONSELHO DE ADMINISTRACAO': False, 'DIRETORIA ESTATUTARIA': False, 'Racio_Poder': ':.1f', 'Conselho_Formatado': True, 'Diretoria_Formatado': True},
+        hover_data={'CONSELHO': False, 'DIRETORIA': False, 'Racio_Poder': ':.1f', 'Conselho_Formatado': True, 'Diretoria_Formatado': True},
         title="Remuneração: Conselho de Administração vs. Diretoria Estatutária",
-        labels={'CONSELHO DE ADMINISTRACAO': 'Total Conselho (R$)', 'DIRETORIA ESTATUTARIA': 'Total Diretoria (R$)', 'Racio_Poder': 'Diretoria ganha X vezes mais', 'Conselho_Formatado': 'Conselho', 'Diretoria_Formatado': 'Diretoria'},
+        labels={'CONSELHO': 'Total Conselho (R$)', 'DIRETORIA': 'Total Diretoria (R$)', 'Racio_Poder': 'Diretoria ganha X vezes mais', 'Conselho_Formatado': 'Conselho', 'Diretoria_Formatado': 'Diretoria'},
         opacity=0.7,
         size='Racio_Poder',
         size_max=30,
@@ -131,7 +139,7 @@ if 'DIRETORIA ESTATUTARIA' in df_gov_pivot.columns and 'CONSELHO DE ADMINISTRACA
     )
     
     # Adicionar uma linha de igualdade (1:1) teórica (apenas visual, embora raro)
-    max_val = max(df_gov_pivot['CONSELHO DE ADMINISTRACAO'].max(), df_gov_pivot['DIRETORIA ESTATUTARIA'].max())
+    max_val = max(df_gov_pivot['CONSELHO'].max(), df_gov_pivot['DIRETORIA'].max())
     fig_gov.add_trace(go.Scatter(x=[0, max_val], y=[0, max_val], mode='lines', name='Equilíbrio 1:1', line=dict(dash='dash', color='gray')))
     
     st.plotly_chart(fig_gov, width='stretch')
