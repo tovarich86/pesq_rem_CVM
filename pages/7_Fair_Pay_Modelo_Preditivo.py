@@ -38,7 +38,7 @@ with st.expander("📖 Transparência do Modelo: Como a IA pensa e o que signifi
     ### O que significam os Componentes da Equação?
     * **Efeito Escala (Faturamento e Funcionários):** A complexidade de gerir uma empresa. A teoria económica dita que o salário de um executivo deve crescer exponencialmente conforme o tamanho da receita e a quantidade de pessoas que ele lidera.
     * **Prêmio de Risco (% do Pacote em Bônus ou Ações):** Executivos preferem a segurança do Salário Fixo. Se o Conselho de Administração quer atrelar 60% do pagamento do CEO a Ações de Longo Prazo (que ele pode acabar por nunca receber se a empresa for mal), o Conselho tem que prometer um pacote total *muito maior* para ele aceitar o cargo. A IA sabe ler este risco e aumenta a estimativa de "Salário Justo".
-    * **Efeito Setorial e UF:** Ajusta o custo de vida e a agressividade padrão de diferentes indústrias (ex: Startups de Tecnologia em São Paulo pagam diferente de Indústrias Pesadas em Minas Gerais).
+    * **Efeito Setorial:** Ajusta a agressividade padrão de diferentes indústrias (ex: Startups de Tecnologia pagam diferente de Indústrias Pesadas).
     * **Tamanho da Diretoria:** Mede a fragmentação do poder. Um orçamento de diretoria dividido por 2 pessoas gera fatias maiores do que o mesmo orçamento dividido por 15 diretores.
     """)
 
@@ -46,7 +46,7 @@ st.markdown("---")
 
 col_filtros1, col_filtros2 = st.columns(2)
 with col_filtros1:
-    # FILTRO: Apenas anos com dados reais (2024 para trás), removendo o ruído das projeções de 2025
+    # FILTRO: Apenas anos com dados reais (2024 para trás)
     anos_reais = [ano for ano in df['ANO_REFER'].unique() if ano <= 2024]
     if not anos_reais:
         st.error("Não há dados de anos anteriores a 2025 para treinar o modelo de forma segura.")
@@ -81,7 +81,7 @@ if n_amostras < 10:
     st.error(f"⚠️ Amostra excessivamente pequena ({n_amostras} empresas). A IA exige um mínimo de 10 empresas. Limpe alguns filtros na barra lateral.")
     st.stop()
 elif n_amostras < 30:
-    st.warning(f"⚠️ Amostra pequena ({n_amostras} empresas). A IA ativou o modo **Baixa Complexidade**: Variáveis geográficas e setoriais foram desativadas para evitar o colapso estatístico (Overfitting).")
+    st.warning(f"⚠️ Amostra pequena ({n_amostras} empresas). A IA ativou o modo **Baixa Complexidade**: Variáveis setoriais foram desativadas para evitar o colapso estatístico (Overfitting).")
     cv_folds = min(3, n_amostras // 4)
     min_leaf = 3
     max_depth = 3
@@ -111,7 +111,8 @@ if 'FATURAMENTO_BRUTO' not in df_modelo.columns: df_modelo['FATURAMENTO_BRUTO'] 
 # MACHINE LEARNING PIPELINE
 # ==========================================
 features_numericas = ['NUM_MEMBROS_TOTAL', 'TOTAL_FUNCIONARIOS', 'FATURAMENTO_BRUTO', 'Perc_Fixo', 'Perc_Var_CP', 'Perc_Var_LP']
-features_categoricas = ['SETOR_ATIVIDADE', 'UF_SEDE', 'CONTROLE_ACIONARIO'] if usar_categoricas else []
+# UF removida das features categóricas
+features_categoricas = ['SETOR_ATIVIDADE', 'CONTROLE_ACIONARIO'] if usar_categoricas else []
 
 features = features_categoricas + features_numericas
 X = df_modelo[features]
@@ -163,7 +164,7 @@ if confianca is not None:
 # ==========================================
 st.markdown("---")
 st.subheader("1. O que mais pesou na decisão da Inteligência Artificial? (Poder Preditivo)")
-st.info("💡 **Dica de Leitura:** Se a barra 'Prêmio Risco: % Ações Longo Prazo' possuir **40%**, isso indica que 40% das diferenças salariais entre as empresas desta amostra são explicadas exclusivamente pela quantidade de ações que elas oferecem. Variáveis no topo da lista são os principais ´motores´ que ditam a remuneração neste ano.")
+st.info("💡 **Dica de Leitura:** Se a barra 'Prêmio Risco: % Ações Longo Prazo' possuir **40%**, isso indica que 40% das diferenças salariais entre as empresas desta amostra são explicadas exclusivamente pela quantidade de ações que elas oferecem. Variáveis no topo da lista são os principais 'motores' que ditam a remuneração neste ano.")
 
 todas_features = list(features_numericas)
 if usar_categoricas:
@@ -176,7 +177,6 @@ df_imp = pd.DataFrame({'Feature': todas_features, 'Importancia': importancias})
 
 def agrupar_feature(nome):
     if 'SETOR_ATIVIDADE' in nome: return 'Efeito Setorial'
-    if 'UF_SEDE' in nome: return 'Custo de Região (UF)'
     if 'CONTROLE_ACIONARIO' in nome: return 'Controle (Estatizada vs Privada)'
     if nome == 'NUM_MEMBROS_TOTAL': return 'Tamanho da Diretoria'
     if nome == 'TOTAL_FUNCIONARIOS': return 'Efeito Escala: Nº de Funcionários'
@@ -242,17 +242,22 @@ st.markdown("Utilize a inteligência do modelo treinado acima para testar o paco
 
 with st.form("form_simulador"):
     st.markdown("**A. Complexidade e Escala (Scale Effect)**")
-    col_s1, col_s2, col_s3 = st.columns(3)
+    col_s1, col_s2 = st.columns(2)
     sim_setor = col_s1.selectbox("Setor Econômico:", df_modelo['SETOR_ATIVIDADE'].unique())
-    sim_uf = col_s2.selectbox("Sede (UF):", df_modelo['UF_SEDE'].unique())
-    sim_membros = col_s3.number_input("Tamanho da Diretoria:", min_value=1, max_value=30, value=5)
+    sim_membros = col_s2.number_input("Tamanho da Diretoria:", min_value=1, max_value=30, value=5)
     
     col_s4, col_s5 = st.columns(2)
     val_med_func = int(df_modelo['TOTAL_FUNCIONARIOS'].median()) if pd.notna(df_modelo['TOTAL_FUNCIONARIOS'].median()) else 1000
-    val_med_fat = float(df_modelo['FATURAMENTO_BRUTO'].median()) if pd.notna(df_modelo['FATURAMENTO_BRUTO'].median()) else 500000000.0
+    
+    # Lógica de conversão para Bilhões
+    val_med_fat_bruto = float(df_modelo['FATURAMENTO_BRUTO'].median()) if pd.notna(df_modelo['FATURAMENTO_BRUTO'].median()) else 500000000.0
+    val_med_fat_bilhoes = val_med_fat_bruto / 1_000_000_000
     
     sim_func = col_s4.number_input("Total de Funcionários:", min_value=1, value=val_med_func)
-    sim_fat = col_s5.number_input("Faturamento Bruto Anual (R$):", min_value=1.0, value=val_med_fat, step=50000000.0)
+    sim_fat_bilhoes = col_s5.number_input("Faturamento Bruto Anual (em Bilhões de R$):", min_value=0.01, value=val_med_fat_bilhoes, step=0.1)
+    
+    # Reverte o valor simulado para o formato que a IA entende
+    sim_fat = sim_fat_bilhoes * 1_000_000_000
 
     st.markdown("**B. Estrutura de Incentivos e Risco (Risk Premium)**")
     col_r1, col_r2, col_r3 = st.columns(3)
@@ -267,7 +272,7 @@ if submit:
         st.error("⚠️ Erro: A soma dos percentuais da estrutura de incentivos deve ser exatamente 100%.")
     else:
         novo_dado = pd.DataFrame({
-            'SETOR_ATIVIDADE': [sim_setor], 'UF_SEDE': [sim_uf], 'CONTROLE_ACIONARIO': ['PRIVADO'], 
+            'SETOR_ATIVIDADE': [sim_setor], 'CONTROLE_ACIONARIO': ['PRIVADO'], 
             'NUM_MEMBROS_TOTAL': [sim_membros], 'TOTAL_FUNCIONARIOS': [sim_func], 'FATURAMENTO_BRUTO': [sim_fat],
             'Perc_Fixo': [sim_p_fixo/100], 'Perc_Var_CP': [sim_p_cp/100], 'Perc_Var_LP': [sim_p_lp/100]
         })
@@ -283,17 +288,16 @@ if submit:
 # ==========================================
 st.markdown("---")
 st.write("**📥 Baixar Relatório de Auditoria do Modelo:**")
-st.markdown("O Excel gerado contém o desvio calculado e **todas as variáveis exatas** (Faturamento, % de Risco, Funcionários) de cada empresa, permitindo que a auditoria rastreie como a IA chegou à conclusão.")
+st.markdown("O Excel gerado contém o desvio calculado e **todas as variáveis exatas** de cada empresa, permitindo que a auditoria rastreie como a IA chegou à conclusão.")
 
-# Cria um dataframe com todas as features essenciais para a auditoria
+# UF_SEDE removida também do relatório de exportação para evitar confusão de variáveis
 colunas_auditoria = [
-    'NOME_COMPANHIA', 'SETOR_ATIVIDADE', 'UF_SEDE', 'CONTROLE_ACIONARIO', 
+    'NOME_COMPANHIA', 'SETOR_ATIVIDADE', 'CONTROLE_ACIONARIO', 
     'TOTAL_FUNCIONARIOS', 'FATURAMENTO_BRUTO', 'NUM_MEMBROS_TOTAL',
     'Perc_Fixo', 'Perc_Var_CP', 'Perc_Var_LP',
     coluna_alvo, 'Predito', 'Desvio_Perc'
 ]
 
-# Garantir que as percentagens fiquem formatadas para o Excel de forma amigável
 df_export = df_modelo[colunas_auditoria].copy()
 df_export['Perc_Fixo'] = (df_export['Perc_Fixo'] * 100).round(2).astype(str) + '%'
 df_export['Perc_Var_CP'] = (df_export['Perc_Var_CP'] * 100).round(2).astype(str) + '%'
