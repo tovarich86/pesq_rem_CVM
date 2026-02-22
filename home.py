@@ -36,20 +36,20 @@ def load_data(url: str) -> pd.DataFrame:
 # --- Página Inicial (Home) ---
 # --- Página Inicial (Home) ---
 def main():
-    st.title("Análise Interativa de Remuneração de Administradores (FRE/CVM)")
+    st.title("Análise Interativa de Remuneração de Administradores (FRE/CVM) 2022-2025")
     
     st.markdown("""
     Bem-vindo! Esta ferramenta foi desenvolvida para democratizar e facilitar a análise visual dos dados de remuneração de administradores de companhias abertas brasileiras. Toda a base de dados é compilada automaticamente a partir dos **Formulários de Referência (FRE)** públicos disponibilizados pela CVM.
     
      **Utilize o menu lateral para navegar pelas seguintes funcionalidades:**
     
-    * ** 1. Componentes da Remuneração:** Composição detalhada da remuneração total (Salário, Benefícios, Bônus, Ações, Pós-Emprego, etc.) por empresa e sua evolução anual.
-    * ** 2. Bônus e PLR:** Análise aprofundada da remuneração variável, medindo a performance entre as metas (alvo) e os valores efetivamente pagos.
-    * ** 3. Remuneração Individual:** Histórico e ranking comparativo dos valores Máximos, Médios e Mínimos pagos aos membros de cada órgão administrativo.
-    * ** 4. Análise Estatística:** Estatísticas de mercado (Quartis, Medianas, Desvio Padrão e Extremos) segmentadas por setor de atuação.
-    * ** 5. Projeção e Benchmarking:** Um ambiente interativo de simulação onde você pode editar os dados da sua empresa, projetar o próximo ciclo e comparar diretamente com a média de um grupo de pares (concorrentes).
-    * ** 6. Governança e Risco:** Governança Corporativa para identificar riscos de agência, concentração de poder e anomalias de rescisão..
-    * ** 5. Fair Pay modrelo Preditivo:** Usa os dados disponiveis no FRE para estimar qual seria o Fair Pay (valor justo) de remuneração com base nos dados de mercado, segmento de atuação, controle acionário , numero de funcionários, faturamento e tamanho da diretoria.
+    * ** 1. Componentes da Remuneração: Composição detalhada da remuneração total (Salário, Benefícios, Bônus, Ações, Pós-Emprego, etc.) por empresa e sua evolução anual.
+    * ** 2. Bônus e PLR: Análise aprofundada da remuneração variável, medindo a performance entre as metas (alvo) e os valores efetivamente pagos.
+    * ** 3. Remuneração Individual: Histórico e ranking comparativo dos valores Máximos, Médios e Mínimos pagos aos membros de cada órgão administrativo.
+    * ** 4. Análise Estatística: Estatísticas de mercado (Quartis, Medianas, Desvio Padrão e Extremos) segmentadas por setor de atuação.
+    * ** 5. Projeção e Benchmarking: Um ambiente interativo de simulação onde você pode editar os dados da sua empresa, projetar o próximo ciclo e comparar diretamente com a média de um grupo de pares (concorrentes).
+    * ** 6. Governança e Risco: Governança Corporativa para identificar riscos de agência, concentração de poder e anomalias de rescisão..
+    * ** 5. Fair Pay modrelo Preditivo: Usa os dados disponiveis no FRE para estimar qual seria o Fair Pay (valor justo) de remuneração com base nos dados de mercado, segmento de atuação, controle acionário , numero de funcionários, faturamento e tamanho da diretoria.
     ---
     ### ⚠️ Avisos Legais e Privacidade
     
