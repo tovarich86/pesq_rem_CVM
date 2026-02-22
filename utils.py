@@ -15,6 +15,16 @@ def format_year(year):
     """Adiciona '(projeção)' ao ano de 2025."""
     return f"{year} (projeção)" if year == 2025 else str(year)
 
+def formata_abrev(valor):
+    """Formata números grandes para K ou M (ex: 1,2M, 500k) limitando os caracteres."""
+    if valor >= 1_000_000:
+        return f"{valor/1_000_000:.1f}M".replace('.', ',')
+    elif valor >= 1_000:
+        return f"{valor/1_000:.0f}k"
+    else:
+        return str(int(valor))
+
+
 # --- FUNÇÕES AUXILIARES ---
 def get_default_index(options_list, default_value):
     """Retorna o índice de um valor padrão numa lista, ou 0 se não for encontrado."""
@@ -72,14 +82,5 @@ def renderizar_sidebar_global(df_original):
         df_filtrado = df_filtrado[df_filtrado['SETOR_ATIVIDADE'] == setor]
     if controle != "TODOS":
         df_filtrado = df_filtrado[df_filtrado['CONTROLE_ACIONARIO'] == controle]
-
-def formata_abrev(valor):
-    """Formata números grandes para K ou M (ex: 1,2M, 500k) limitando os caracteres."""
-    if valor >= 1_000_000:
-        return f"{valor/1_000_000:.1f}M".replace('.', ',')
-    elif valor >= 1_000:
-        return f"{valor/1_000:.0f}k"
-    else:
-        return str(int(valor))
 
     return df_filtrado
