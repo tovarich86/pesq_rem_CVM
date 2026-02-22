@@ -42,42 +42,48 @@ df_diretoria = df[(df['ANO_REFER'] == ano_selecionado) & (df['ORGAO_ADMINISTRACA
 
 # Cálculo do CEO Pay Slice
 df_diretoria['CEO_Pay_Slice'] = 0.0
-mascara_validos = (df_diretoria['REM_MEDIA_INDIVIDUAL'] > 0) & (df_diretoria['REM_MAXIMA_INDIVIDUAL'] > 0)
-df_diretoria.loc[mascara_validos, 'CEO_Pay_Slice'] = df_diretoria.loc[mascara_validos, 'REM_MAXIMA_INDIVIDUAL'] / df_diretoria.loc[mascara_validos, 'REM_MEDIA_INDIVIDUAL']
+
+# Verifica se as colunas existem para evitar erros
+if 'REM_MEDIA_INDIVIDUAL' in df_diretoria.columns and 'REM_MAXIMA_INDIVIDUAL' in df_diretoria.columns:
+    mascara_validos = (df_diretoria['REM_MEDIA_INDIVIDUAL'] > 0) & (df_diretoria['REM_MAXIMA_INDIVIDUAL'] > 0)
+    df_diretoria.loc[mascara_validos, 'CEO_Pay_Slice'] = df_diretoria.loc[mascara_validos, 'REM_MAXIMA_INDIVIDUAL'] / df_diretoria.loc[mascara_validos, 'REM_MEDIA_INDIVIDUAL']
 
 df_cps = df_diretoria[df_diretoria['CEO_Pay_Slice'] > 0].sort_values(by='CEO_Pay_Slice', ascending=False)
 
-col1_cps, col2_cps = st.columns([2, 1])
+# --- ESCUDO ANTI-NaN: Verifica se a lista está vazia ---
+if df_cps.empty:
+    st.info(f"📊 As empresas da amostra ainda não reportaram dados válidos de Remuneração Máxima e Média para o ano de **{ano_selecionado}**. Tente selecionar um ano anterior (ex: 2024).")
+else:
+    col1_cps, col2_cps = st.columns([2, 1])
 
-with col1_cps:
-    # Mostra o Top 15 empresas com maior dispersão
-    fig_cps = px.bar(
-        df_cps.head(15), 
-        x='CEO_Pay_Slice', 
-        y='NOME_COMPANHIA', 
-        orientation='h',
-        title=f"Top 15 Maiores Dispersões Salariais (Diretoria) - {ano_selecionado}",
-        labels={'CEO_Pay_Slice': 'Múltiplo (Maior vs Média)', 'NOME_COMPANHIA': 'Empresa'},
-        text_auto='.1f',
-        color='CEO_Pay_Slice',
-        color_continuous_scale='Reds'
-    )
-    fig_cps.update_layout(yaxis={'categoryorder':'total ascending'}, margin=dict(l=0, r=0, t=40, b=0))
-    st.plotly_chart(fig_cps, width='stretch')
+    with col1_cps:
+        # Mostra o Top 15 empresas com maior dispersão
+        fig_cps = px.bar(
+            df_cps.head(15), 
+            x='CEO_Pay_Slice', 
+            y='NOME_COMPANHIA', 
+            orientation='h',
+            title=f"Top 15 Maiores Dispersões Salariais (Diretoria) - {ano_selecionado}",
+            labels={'CEO_Pay_Slice': 'Múltiplo (Maior vs Média)', 'NOME_COMPANHIA': 'Empresa'},
+            text_auto='.1f',
+            color='CEO_Pay_Slice',
+            color_continuous_scale='Reds'
+        )
+        fig_cps.update_layout(yaxis={'categoryorder':'total ascending'}, margin=dict(l=0, r=0, t=40, b=0))
+        st.plotly_chart(fig_cps, width='stretch')
 
-with col2_cps:
-    st.info("**Estatísticas do Mercado (Filtro Atual)**")
-    media_mercado = df_cps['CEO_Pay_Slice'].mean()
-    mediana_mercado = df_cps['CEO_Pay_Slice'].median()
-    maximo_mercado = df_cps['CEO_Pay_Slice'].max()
-    
-    st.metric("Média de Dispersão", f"{media_mercado:.1f}x")
-    st.metric("Mediana de Dispersão", f"{mediana_mercado:.1f}x")
-    st.metric("Pico do Mercado (Máximo)", f"{maximo_mercado:.1f}x")
-    
-    st.write("*(Exemplo: 3.0x significa que a maior remuneração é o triplo da média da própria diretoria).*")
-
-st.markdown("---")
+    with col2_cps:
+        st.info("**Estatísticas do Mercado (Filtro Atual)**")
+        media_mercado = df_cps['CEO_Pay_Slice'].mean()
+        mediana_mercado = df_cps['CEO_Pay_Slice'].median()
+        maximo_mercado = df_cps['CEO_Pay_Slice'].max()
+        
+        # O pd.notna garante que se ainda assim algo falhar, ele mostra N/A em vez de dar erro
+        st.metric("Média de Dispersão", f"{media_mercado:.1f}x" if pd.notna(media_mercado) else "N/A")
+        st.metric("Mediana de Dispersão", f"{mediana_mercado:.1f}x" if pd.notna(mediana_mercado) else "N/A")
+        st.metric("Pico do Mercado (Máximo)", f"{maximo_mercado:.1f}x" if pd.notna(maximo_mercado) else "N/A")
+        
+        st.write("*(Exemplo: 3.0x significa que a maior remuneração é o triplo da média da própria diretoria).*")
 
 # ==========================================
 # 2. EQUILÍBRIO DE PODER (Conselho vs Diretoria)
