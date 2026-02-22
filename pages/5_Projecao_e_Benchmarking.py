@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-# Adicionamos a importação do formata_abrev
+# Importações dos utilitários
 from utils import get_default_index, renderizar_sidebar_global, formata_abrev, create_download_button
 
 st.set_page_config(layout="wide", page_title="Projeção e Benchmarking", page_icon="🚀")
@@ -87,7 +87,7 @@ config_colunas = {
 edited_df = st.data_editor(
     df_editor_pd,
     column_config=config_colunas,
-    width='stretch' # Atualizado para corrigir o warning do Streamlit
+    width='stretch'
 )
 
 st.markdown("---")
@@ -103,19 +103,16 @@ intervalo_anos = st.slider(
 )
 
 # --- ENGENHARIA DE DADOS PARA O GRÁFICO (MELT) ---
-# 1. Dados da Empresa Base
 df_base_plot = edited_df.reset_index().rename(columns={'index': 'Componente'})
 df_base_plot = df_base_plot.melt(id_vars='Componente', var_name='Ano', value_name='Valor')
 nome_tipo_base = f'{empresa_base} (Sua Projeção)'
 df_base_plot['Tipo'] = nome_tipo_base
 
-# 2. Dados dos Pares e Média (se selecionados)
 dados_pares_plot = []
 if pares:
     df_pares = df[(df['NOME_COMPANHIA'].isin(pares)) & (df['ORGAO_ADMINISTRACAO'] == orgao)]
     for par in pares:
         df_par = df_pares[df_pares['NOME_COMPANHIA'] == par]
-        # Puxa dados de 2022 a 2025
         for ano in anos_historicos:
             df_ano = df_par[df_par['ANO_REFER'] == ano]
             for comp_nome, col_db in component_cols.items():
@@ -124,32 +121,27 @@ if pares:
     
     df_pares_plot_df = pd.DataFrame(dados_pares_plot)
     
-    # Projeta 2026 para os Pares individualmente
     df_2025_pares = df_pares_plot_df[df_pares_plot_df['Ano'] == 2025].copy()
     df_2026_pares = df_2025_pares.copy()
     df_2026_pares['Ano'] = 2026
     df_2026_pares['Valor'] = df_2026_pares['Valor'] * (1 + (fator_ajuste / 100))
     df_pares_plot_df = pd.concat([df_pares_plot_df, df_2026_pares], ignore_index=True)
     
-    # Calcula a Média dos Pares (Mercado)
     df_media = df_pares_plot_df.groupby(['Ano', 'Componente'])['Valor'].mean().reset_index()
     df_media['Tipo'] = 'Média dos Pares'
     
     df_final_plot = pd.concat([df_base_plot, df_pares_plot_df, df_media], ignore_index=True)
 else:
-    # Se nenhum par foi selecionado, mostra apenas a empresa base
     df_final_plot = df_base_plot
 
 # --- APLICAR FILTRO DE ANO ---
-# 1. Garante que o Ano é número para o filtro funcionar
+# Garante que o Ano é número inteiro para a matemática do filtro funcionar
 df_final_plot['Ano'] = df_final_plot['Ano'].astype(int)
 df_final_plot = df_final_plot[(df_final_plot['Ano'] >= intervalo_anos[0]) & (df_final_plot['Ano'] <= intervalo_anos[1])]
 
 if df_final_plot.empty:
     st.info("Não há dados para exibir no intervalo de anos selecionado.")
 else:
-    # --- TODO ESTE BLOCO DEVE ESTAR INDENTADO DENTRO DO ELSE ---
-    
     # Cálculo de Porcentagem para não poluir barras muito pequenas com texto
     totais_ano_tipo = df_final_plot.groupby(['Ano', 'Tipo'])['Valor'].transform('sum')
     df_final_plot['Perc'] = (df_final_plot['Valor'] / totais_ano_tipo) * 100
@@ -164,14 +156,14 @@ else:
         ordem_tipos.append('Média dos Pares')
         ordem_tipos.extend(sorted(pares))
 
-    # Construção do Gráfico Facetado (Subplots automáticos por Tipo de Empresa)
+    # Construção do Gráfico Facetado
     fig = px.bar(
         df_final_plot, 
         x='Ano', 
         y='Valor', 
         color='Componente', 
         facet_col='Tipo', 
-        facet_col_wrap=3, # Se houver muitos pares, quebra a linha a cada 3 gráficos
+        facet_col_wrap=3, 
         barmode='stack',
         text='Texto',
         title=f"Evolução e Benchmarking Empilhado ({orgao})",
@@ -179,8 +171,36 @@ else:
         category_orders={'Tipo': ordem_tipos}
     )
     
-    # Ajustes estéticos
-    fig.update_traces(textposition='inside', insidetextanchor='middle', textfont_size=11)
+    # --- ADICIONAR TOTAIS ACIMA DAS BARRAS ---
+    # 1. Cria um DataFrame só com os totais
+    df_totais = df_final_plot.groupby(['Ano', 'Tipo'], as_index=False)['Valor'].sum()
+    df_totais['Texto_Total'] = df_totais['Valor'].apply(formata_abrev)
+
+    # 2. Cria um gráfico de dispersão (scatter) invisível usando a mesma divisão de painéis
+    fig_totais = px.scatter(
+        df_totais,
+        x='Ano',
+        y='Valor',
+        facet_col='Tipo',
+        facet_col_wrap=3,
+        text='Texto_Total',
+        category_orders={'Tipo': ordem_tipos}
+    )
+    
+    # 3. Formata para mostrar apenas o texto em negrito, posicionado exatamente acima do topo da barra
+    fig_totais.update_traces(
+        mode='text', 
+        textposition='top center', 
+        textfont=dict(weight='bold', size=13), 
+        showlegend=False
+    )
+    
+    # 4. Copia o texto para o gráfico de barras principal
+    for trace in fig_totais.data:
+        fig.add_trace(trace)
+
+    # --- AJUSTES FINAIS DE LAYOUT ---
+    fig.update_traces(textposition='inside', insidetextanchor='middle', textfont_size=11, selector=dict(type='bar'))
     fig.update_layout(
         separators=",.",
         margin=dict(t=60, b=40),
@@ -188,7 +208,11 @@ else:
         hovermode='x unified'
     )
     
-    # Remove a palavra "Tipo=" do título de cada subplot para ficar mais limpo
+    # Aumenta o limite do eixo Y para garantir que o texto do total não fique cortado
+    max_val = df_totais['Valor'].max() if not df_totais.empty else 0
+    fig.update_yaxes(range=[0, max_val * 1.15])
+    
+    # Remove a palavra "Tipo=" do título de cada subplot para ficar profissional
     fig.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
 
     st.plotly_chart(fig, width='stretch')
