@@ -27,24 +27,32 @@ if df.empty:
     st.stop()
 
 st.header("🤖 Inteligência Artificial (Explainable AI & Fair Pay)")
-st.markdown("Este modelo aprende os padrões salariais de centenas de empresas e cria uma **matemática do Salário Justo** baseada no tamanho, setor e risco do pacote de remuneração.")
+st.markdown("Este modelo aprende os padrões salariais de centenas de empresas com base no histórico consolidado e cria uma **matemática do Salário Justo**. *Nota: Projeções de 2025 foram removidas para garantir que a IA treine apenas com pagamentos reais e auditados.*")
 
-# --- GUIA EDUCATIVO GERAL ---
-with st.expander("📖 Como interpretar os resultados desta Inteligência Artificial? (Clique para ler)"):
+# --- GUIA EDUCATIVO GERAL (EXPLAINABLE AI) ---
+with st.expander("📖 Transparência do Modelo: Como a IA pensa e o que significa cada variável?"):
     st.markdown("""
-    **1. O que é a Linha de Equilíbrio (Fair Pay)?** A Inteligência Artificial calculou qual *deveria ser* o salário de uma empresa olhando para os seus concorrentes de mesmo tamanho e perfil. Se uma empresa está acima da linha (Overpaid), paga mais do que a matemática de mercado exige. Se está abaixo (Underpaid), paga menos.
-
-    **2. O que é o "Prêmio de Risco"?** A teoria financeira prova que executivos preferem o "dinheiro certo" (salário fixo). Se uma empresa decide pagar o CEO majoritariamente em **Ações** ou **Bônus de Metas Difíceis** (alto risco de ele não receber nada), ela precisa prometer um pacote total *muito maior* para compensar esse risco. A IA sabe disso e aumenta a linha de "Salário Justo" automaticamente para empresas que usam muitas ações.
-
-    **3. O que é a Significância (R²)?** É a nota de confiança da IA (de 0% a 100%). Um R² de 40%, por exemplo, significa que 40% da variação gigantesca de salários no mercado pode ser explicada matematicamente por este nosso modelo. Em dados humanos (RH), qualquer R² acima de 30% já é considerado excelente para prever tendências!
+    ### Como funciona o algoritmo de predição?
+    Utilizamos um modelo de **Random Forest (Floresta Aleatória)**. Em vez de olhar para uma única regra, a IA constrói centenas de "árvores de decisão" diferentes baseadas nos dados das empresas. Ela cruza milhares de cenários (ex: "Se a empresa é de Varejo E fatura mais de 1 Bilhão E paga muito em ações...") para descobrir qual é o padrão salarial exato do mercado para aquele perfil. O resultado final é a média da inteligência de todas essas árvores.
+    
+    ### O que significam os Componentes da Equação?
+    * **Efeito Escala (Faturamento e Funcionários):** A complexidade de gerir uma empresa. A teoria económica dita que o salário de um executivo deve crescer exponencialmente conforme o tamanho da receita e a quantidade de pessoas que ele lidera.
+    * **Prêmio de Risco (% do Pacote em Bônus ou Ações):** Executivos preferem a segurança do Salário Fixo. Se o Conselho de Administração quer atrelar 60% do pagamento do CEO a Ações de Longo Prazo (que ele pode acabar por nunca receber se a empresa for mal), o Conselho tem que prometer um pacote total *muito maior* para ele aceitar o cargo. A IA sabe ler este risco e aumenta a estimativa de "Salário Justo".
+    * **Efeito Setorial e UF:** Ajusta o custo de vida e a agressividade padrão de diferentes indústrias (ex: Startups de Tecnologia em São Paulo pagam diferente de Indústrias Pesadas em Minas Gerais).
+    * **Tamanho da Diretoria:** Mede a fragmentação do poder. Um orçamento de diretoria dividido por 2 pessoas gera fatias maiores do que o mesmo orçamento dividido por 15 diretores.
     """)
 
 st.markdown("---")
 
 col_filtros1, col_filtros2 = st.columns(2)
 with col_filtros1:
-    anos_disponiveis = sorted(df['ANO_REFER'].unique(), reverse=True)
-    ano_selecionado = st.selectbox("Selecione o Ano Base para o Treinamento:", anos_disponiveis)
+    # FILTRO: Apenas anos com dados reais (2024 para trás), removendo o ruído das projeções de 2025
+    anos_reais = [ano for ano in df['ANO_REFER'].unique() if ano <= 2024]
+    if not anos_reais:
+        st.error("Não há dados de anos anteriores a 2025 para treinar o modelo de forma segura.")
+        st.stop()
+    anos_disponiveis = sorted(anos_reais, reverse=True)
+    ano_selecionado = st.selectbox("Selecione o Ano Base (Histórico Auditado):", anos_disponiveis)
 
 with col_filtros2:
     alvo_selecionado = st.selectbox(
@@ -149,16 +157,13 @@ if confianca is not None:
         st.warning(f"📊 **Confiança da IA (R²): {confianca:.1%}** | Confiança Moderada. A IA encontrou tendências, mas existem muitos casos 'fora da curva' nesta amostra.")
     else:
         st.success(f"✅ **Confiança da IA (R²): {confianca:.1%}** | Alta Precisão! A IA mapeou com clareza a regra de pagamento deste grupo de {n_amostras} empresas.")
+
 # ==========================================
 # EXPLAINABLE AI (IMPORTÂNCIA DAS VARIÁVEIS)
 # ==========================================
 st.markdown("---")
 st.subheader("1. O que mais pesou na decisão da Inteligência Artificial? (Poder Preditivo)")
-
-# --- TEXTO EDUCATIVO DO GRÁFICO DE IMPORTÂNCIA ---
-st.info("""
-**Como ler este gráfico?** Se a barra 'Prêmio Risco: % Ações' tiver **40%**, isso significa que, na hora de decidir o Salário Justo de um executivo, a IA baseou 40% da sua decisão apenas olhando para a quantidade de ações que ele recebe. As variáveis no topo são as que mais justificam as diferenças salariais entre as empresas.
-""")
+st.info("💡 **Dica de Leitura:** Se a barra 'Prêmio Risco: % Ações Longo Prazo' possuir **40%**, isso indica que 40% das diferenças salariais entre as empresas desta amostra são explicadas exclusivamente pela quantidade de ações que elas oferecem. Variáveis no topo da lista são os principais "motores" que ditam a remuneração neste ano.")
 
 todas_features = list(features_numericas)
 if usar_categoricas:
@@ -196,7 +201,7 @@ st.plotly_chart(fig_imp, use_container_width=True)
 # ==========================================
 st.markdown("---")
 st.subheader(f"2. Dispersão de Mercado: {alvo_selecionado}")
-st.write("Cada ponto representa uma empresa. A posição horizontal é o que a IA diz que ela deveria pagar. A vertical é o que ela realmente pagou.")
+st.write("Cada ponto representa uma empresa. A posição horizontal é o que a matemática diz que ela deveria pagar. A vertical é o que ela realmente pagou na prática.")
 
 fig_scatter = px.scatter(
     df_modelo, x='Predito', y=coluna_alvo, color='Perc_Var_LP',
@@ -227,7 +232,72 @@ with col2:
     fig_under.update_layout(yaxis={'categoryorder':'total descending'}, xaxis_title="% Abaixo da Linha de Equilíbrio", yaxis_title="")
     st.plotly_chart(fig_under, use_container_width=True)
 
+
+# ==========================================
+# SIMULADOR ESTRATÉGICO
+# ==========================================
 st.markdown("---")
-st.write("**Exportação para Auditoria:**")
-df_export = df_modelo[['NOME_COMPANHIA', 'SETOR_ATIVIDADE', coluna_alvo, 'Predito', 'Desvio_Perc']]
-create_download_button(df_export, f"auditoria_desvios_ia_{ano_selecionado}")
+st.subheader("🧪 3. Simulador de Salário Justo")
+st.markdown("Utilize a inteligência do modelo treinado acima para testar o pacote de remuneração da sua própria organização.")
+
+with st.form("form_simulador"):
+    st.markdown("**A. Complexidade e Escala (Scale Effect)**")
+    col_s1, col_s2, col_s3 = st.columns(3)
+    sim_setor = col_s1.selectbox("Setor Econômico:", df_modelo['SETOR_ATIVIDADE'].unique())
+    sim_uf = col_s2.selectbox("Sede (UF):", df_modelo['UF_SEDE'].unique())
+    sim_membros = col_s3.number_input("Tamanho da Diretoria:", min_value=1, max_value=30, value=5)
+    
+    col_s4, col_s5 = st.columns(2)
+    val_med_func = int(df_modelo['TOTAL_FUNCIONARIOS'].median()) if pd.notna(df_modelo['TOTAL_FUNCIONARIOS'].median()) else 1000
+    val_med_fat = float(df_modelo['FATURAMENTO_BRUTO'].median()) if pd.notna(df_modelo['FATURAMENTO_BRUTO'].median()) else 500000000.0
+    
+    sim_func = col_s4.number_input("Total de Funcionários:", min_value=1, value=val_med_func)
+    sim_fat = col_s5.number_input("Faturamento Bruto Anual (R$):", min_value=1.0, value=val_med_fat, step=50000000.0)
+
+    st.markdown("**B. Estrutura de Incentivos e Risco (Risk Premium)**")
+    col_r1, col_r2, col_r3 = st.columns(3)
+    sim_p_fixo = col_r1.slider("% Fixo (Salário Base)", 0, 100, 30)
+    sim_p_cp = col_r2.slider("% Variável Curto Prazo (Bônus/PLR)", 0, 100, 40)
+    sim_p_lp = col_r3.slider("% Variável Longo Prazo (Ações)", 0, 100, 30)
+    
+    submit = st.form_submit_button("Processar Estimativa com IA")
+
+if submit:
+    if (sim_p_fixo + sim_p_cp + sim_p_lp) != 100:
+        st.error("⚠️ Erro: A soma dos percentuais da estrutura de incentivos deve ser exatamente 100%.")
+    else:
+        novo_dado = pd.DataFrame({
+            'SETOR_ATIVIDADE': [sim_setor], 'UF_SEDE': [sim_uf], 'CONTROLE_ACIONARIO': ['PRIVADO'], 
+            'NUM_MEMBROS_TOTAL': [sim_membros], 'TOTAL_FUNCIONARIOS': [sim_func], 'FATURAMENTO_BRUTO': [sim_fat],
+            'Perc_Fixo': [sim_p_fixo/100], 'Perc_Var_CP': [sim_p_cp/100], 'Perc_Var_LP': [sim_p_lp/100]
+        })
+        
+        est_alvo = np.expm1(modelo.predict(novo_dado)[0])
+        
+        st.info(f"💡 **Predição Estatística Concluída (Base {ano_selecionado})**")
+        st.metric(f"{alvo_selecionado} Recomendado pela IA", f"R$ {est_alvo:,.2f}")
+
+
+# ==========================================
+# EXPORTAÇÃO PARA AUDITORIA (DEEP-DIVE)
+# ==========================================
+st.markdown("---")
+st.write("**📥 Baixar Relatório de Auditoria do Modelo:**")
+st.markdown("O Excel gerado contém o desvio calculado e **todas as variáveis exatas** (Faturamento, % de Risco, Funcionários) de cada empresa, permitindo que a auditoria rastreie como a IA chegou à conclusão.")
+
+# Cria um dataframe com todas as features essenciais para a auditoria
+colunas_auditoria = [
+    'NOME_COMPANHIA', 'SETOR_ATIVIDADE', 'UF_SEDE', 'CONTROLE_ACIONARIO', 
+    'TOTAL_FUNCIONARIOS', 'FATURAMENTO_BRUTO', 'NUM_MEMBROS_TOTAL',
+    'Perc_Fixo', 'Perc_Var_CP', 'Perc_Var_LP',
+    coluna_alvo, 'Predito', 'Desvio_Perc'
+]
+
+# Garantir que as percentagens fiquem formatadas para o Excel de forma amigável
+df_export = df_modelo[colunas_auditoria].copy()
+df_export['Perc_Fixo'] = (df_export['Perc_Fixo'] * 100).round(2).astype(str) + '%'
+df_export['Perc_Var_CP'] = (df_export['Perc_Var_CP'] * 100).round(2).astype(str) + '%'
+df_export['Perc_Var_LP'] = (df_export['Perc_Var_LP'] * 100).round(2).astype(str) + '%'
+df_export['Desvio_Perc'] = df_export['Desvio_Perc'].round(2).astype(str) + '%'
+
+create_download_button(df_export, f"auditoria_completa_fair_pay_IA_{ano_selecionado}")
