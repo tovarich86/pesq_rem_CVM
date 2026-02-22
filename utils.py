@@ -73,4 +73,13 @@ def renderizar_sidebar_global(df_original):
     if controle != "TODOS":
         df_filtrado = df_filtrado[df_filtrado['CONTROLE_ACIONARIO'] == controle]
 
+def formata_abrev(valor):
+    """Formata números grandes para K ou M (ex: 1,2M, 500k) limitando os caracteres."""
+    if valor >= 1_000_000:
+        return f"{valor/1_000_000:.1f}M".replace('.', ',')
+    elif valor >= 1_000:
+        return f"{valor/1_000:.0f}k"
+    else:
+        return str(int(valor))
+
     return df_filtrado
