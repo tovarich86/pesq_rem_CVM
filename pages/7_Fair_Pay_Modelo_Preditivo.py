@@ -26,18 +26,18 @@ if df.empty:
     st.warning("Nenhum dado encontrado para os filtros selecionados.")
     st.stop()
 
-st.header("🤖 Inteligência Artificial (Explainable AI & Fair Pay)")
-st.markdown("Este modelo aprende os padrões salariais de centenas de empresas com base no histórico consolidado e cria uma **matemática do Salário Justo**. *Nota: Projeções de 2025 foram removidas para garantir que a IA treine apenas com pagamentos reais e auditados.*")
+st.header("🤖 Random Forest (Explainable AI & Fair Pay)")
+st.markdown("Este modelo aprende os padrões salariais com base nos dados da CVM de empresas consolidado e cria um modelo preditivo **do Salário Justo**. *Nota: Projeções de 2025 foram removidas para garantir que a IA treine apenas com valores efgetivamente pagos.*")
 
 # --- GUIA EDUCATIVO GERAL (EXPLAINABLE AI) ---
-with st.expander("📖 Transparência do Modelo: Como a IA pensa e o que significa cada variável?"):
+with st.expander("📖 Transparência do Modelo: Como o modelo aplica cada variável?"):
     st.markdown("""
     ### Como funciona o algoritmo de predição?
     Utilizamos um modelo de **Random Forest (Floresta Aleatória)**. Em vez de olhar para uma única regra, a IA constrói centenas de "árvores de decisão" diferentes baseadas nos dados das empresas. Ela cruza milhares de cenários (ex: "Se a empresa é de Varejo E fatura mais de 1 Bilhão E paga muito em ações...") para descobrir qual é o padrão salarial exato do mercado para aquele perfil. O resultado final é a média da inteligência de todas essas árvores.
     
     ### O que significam os Componentes da Equação?
-    * **Efeito Escala (Faturamento e Funcionários):** A complexidade de gerir uma empresa. A teoria económica dita que o salário de um executivo deve crescer exponencialmente conforme o tamanho da receita e a quantidade de pessoas que ele lidera.
-    * **Prêmio de Risco (% do Pacote em Bônus ou Ações):** Executivos preferem a segurança do Salário Fixo. Se o Conselho de Administração quer atrelar 60% do pagamento do CEO a Ações de Longo Prazo (que ele pode acabar por nunca receber se a empresa for mal), o Conselho tem que prometer um pacote total *muito maior* para ele aceitar o cargo. A IA sabe ler este risco e aumenta a estimativa de "Salário Justo".
+    * **Efeito Escala (Faturamento e Funcionários):** A complexidade de gerir uma empresa. A teoria económica dita que o salário de um executivo deve crescer conforme o tamanho da receita e a quantidade de pessoas que ele lidera.
+    * **Prêmio de Risco (% do Pacote em Bônus ou Ações):** Executivos preferem a segurança do Salário Fixo. Se o Conselho de Administração quer atrelar 60% do pagamento do CEO a Ações de Longo Prazo (que ele pode acabar por nunca receber se a empresa for mal), o Conselho tem que prometer um pacote total *muito maior* para ele aceitar o cargo. O modelo interpreta este risco e ajusta a estimativa de "Salário Justo" a depender do mix de remuneração.
     * **Efeito Setorial:** Ajusta a agressividade padrão de diferentes indústrias (ex: Startups de Tecnologia pagam diferente de Indústrias Pesadas).
     * **Tamanho da Diretoria:** Mede a fragmentação do poder. Um orçamento de diretoria dividido por 2 pessoas gera fatias maiores do que o mesmo orçamento dividido por 15 diretores.
     """)
@@ -78,10 +78,10 @@ df_modelo = df_modelo[df_modelo[coluna_alvo] > 0]
 # ==========================================
 n_amostras = len(df_modelo)
 if n_amostras < 10:
-    st.error(f"⚠️ Amostra excessivamente pequena ({n_amostras} empresas). A IA exige um mínimo de 10 empresas. Limpe alguns filtros na barra lateral.")
+    st.error(f"⚠️ Amostra excessivamente pequena ({n_amostras} empresas). O modelo exige um mínimo de 10 empresas. Limpe alguns filtros na barra lateral.")
     st.stop()
 elif n_amostras < 30:
-    st.warning(f"⚠️ Amostra pequena ({n_amostras} empresas). A IA ativou o modo **Baixa Complexidade**: Variáveis setoriais foram desativadas para evitar o colapso estatístico (Overfitting).")
+    st.warning(f"⚠️ Amostra pequena ({n_amostras} empresas). O modelo ativou o modo **Baixa Complexidade**: Variáveis setoriais foram desativadas para evitar o colapso estatístico (Overfitting).")
     cv_folds = min(3, n_amostras // 4)
     min_leaf = 3
     max_depth = 3
@@ -163,7 +163,7 @@ if confianca is not None:
 # EXPLAINABLE AI (IMPORTÂNCIA DAS VARIÁVEIS)
 # ==========================================
 st.markdown("---")
-st.subheader("1. O que mais pesou na decisão da Inteligência Artificial? (Poder Preditivo)")
+st.subheader("1. O que mais pesou na decisão do modelo? (Poder Preditivo)")
 st.info("💡 **Dica de Leitura:** Se a barra 'Prêmio Risco: % Ações Longo Prazo' possuir **40%**, isso indica que 40% das diferenças salariais entre as empresas desta amostra são explicadas exclusivamente pela quantidade de ações que elas oferecem. Variáveis no topo da lista são os principais 'motores' que ditam a remuneração neste ano.")
 
 todas_features = list(features_numericas)
