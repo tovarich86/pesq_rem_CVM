@@ -2,7 +2,8 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-from utils import get_default_index, create_download_button, renderizar_sidebar_global, format_year
+# Adicionamos o formata_abrev aqui também
+from utils import get_default_index, create_download_button, renderizar_sidebar_global, format_year, formata_abrev
 
 st.set_page_config(layout="wide", page_title="Bônus e PLR", page_icon="🎯")
 
@@ -56,12 +57,18 @@ df_plot['Métrica'] = df_plot['Métrica'].map({v: k for k, v in bonus_cols.items
 if not df_plot.empty:
     df_plot['ANO_REFER_FORMATTED'] = df_plot['ANO_REFER'].apply(format_year)
     
+    # --- NOVIDADE: Adicionando Rótulos ao Gráfico ---
+    # Aplica a nossa função de formatação para criar uma coluna de texto
+    df_plot['Texto'] = df_plot['Valor'].apply(formata_abrev)
+    
     fig = px.bar(df_plot, x='ANO_REFER_FORMATTED', y='Valor', color='Métrica', 
-                 barmode='group', facet_col='Tipo', 
+                 barmode='group', facet_col='Tipo', text='Texto',
                  title=f"Evolução de Bônus e PLR para {empresa} ({orgao})", 
                  labels={'ANO_REFER_FORMATTED': 'Ano', 'Valor': f'Valor {calc_type} (R$)'},
                  template="streamlit")
     
+    # Coloca os textos imediatamente acima de cada barra do grupo
+    fig.update_traces(textposition='outside')
     fig.update_xaxes(type='category')
     fig.update_layout(separators=",.")
     st.plotly_chart(fig, use_container_width=True)
