@@ -48,7 +48,8 @@ def main():
     * ** 3. Remuneração Individual:** Histórico e ranking comparativo dos valores Máximos, Médios e Mínimos pagos aos membros de cada órgão administrativo.
     * ** 4. Análise Estatística:** Estatísticas de mercado (Quartis, Medianas, Desvio Padrão e Extremos) segmentadas por setor de atuação.
     * ** 5. Projeção e Benchmarking:** Um ambiente interativo de simulação onde você pode editar os dados da sua empresa, projetar o próximo ciclo e comparar diretamente com a média de um grupo de pares (concorrentes).
-
+    * ** 6. Governança e Risco:** Governança Corporativa para identificar riscos de agência, concentração de poder e anomalias de rescisão..
+    * ** 5. Fair Pay modrelo Preditivo:** Usa os dados disponiveis no FRE para estimar qual seria o Fair Pay (valor justo) de remuneração com base nos dados de mercado, segmento de atuação, controle acionário , numero de funcionários, faturamento e tamanho da diretoria.
     ---
     ### ⚠️ Avisos Legais e Privacidade
     
