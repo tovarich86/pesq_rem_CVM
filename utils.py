@@ -34,14 +34,26 @@ def get_default_index(options_list, default_value):
         return 0
 
 def create_download_button(df, filename):
-    """Cria um botão de download para um DataFrame em formato Excel."""
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='Dados')
-    processed_data = output.getvalue()
+    # --- 1. VACINA CONTRA CARACTERES INVISÍVEIS DO EXCEL ---
+    df_clean = df.copy()
+    # Pega apenas as colunas de texto
+    colunas_texto = df_clean.select_dtypes(include=['object', 'string']).columns
+    
+    for col in colunas_texto:
+        # Substitui qualquer caractere de controle (ilegal no Excel/XML) por vazio
+        # \x00-\x08, \x0B-\x0C, \x0E-\x1F são os códigos dos caracteres invisíveis proibidos
+        df_clean[col] = df_clean[col].astype(str).replace(r'[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F-\x9F]', '', regex=True)
+    # -------------------------------------------------------
+
+    # --- 2. GERAÇÃO DO ARQUIVO EXCEL ---
+    buffer = io.BytesIO()
+    with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+        df_clean.to_excel(writer, index=False, sheet_name='Dados')
+    
+    # --- 3. BOTÃO DO STREAMLIT ---
     st.download_button(
-        label="📥 Download dos dados (Excel)",
-        data=processed_data,
+        label="📥 Descarregar Dados (Excel)",
+        data=buffer.getvalue(),
         file_name=f"{filename}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
