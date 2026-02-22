@@ -34,49 +34,62 @@ def load_data(url: str) -> pd.DataFrame:
         return pd.DataFrame()
 
 # --- Página Inicial (Home) ---
+# --- Página Inicial (Home) ---
 def main():
-    st.title("Análise Interativa de Remuneração de Administradores 2022-2025 FRE")
+    st.title("Análise Interativa de Remuneração de Administradores (FRE/CVM)")
     
     st.markdown("""
-    Esta ferramenta foi desenvolvida para permitir a análise interativa dos dados de remuneração de administradores de companhias abertas brasileiras, utilizando como base o arquivo de dados compilado do Formulário de Referência (FRE) da CVM. 
+    Bem-vindo! Esta ferramenta foi desenvolvida para democratizar e facilitar a análise visual dos dados de remuneração de administradores de companhias abertas brasileiras. Toda a base de dados é compilada automaticamente a partir dos **Formulários de Referência (FRE)** públicos disponibilizados pela CVM.
     
-    👈 **Utilize o menu lateral para navegar entre as diferentes análises disponíveis.**
+     **Utilize o menu lateral para navegar pelas seguintes funcionalidades:**
+    
+    * ** 1. Componentes da Remuneração:** Composição detalhada da remuneração total (Salário, Benefícios, Bônus, Ações, Pós-Emprego, etc.) por empresa e sua evolução anual.
+    * ** 2. Bônus e PLR:** Análise aprofundada da remuneração variável, medindo a performance entre as metas (alvo) e os valores efetivamente pagos.
+    * ** 3. Remuneração Individual:** Histórico e ranking comparativo dos valores Máximos, Médios e Mínimos pagos aos membros de cada órgão administrativo.
+    * ** 4. Análise Estatística:** Estatísticas de mercado (Quartis, Medianas, Desvio Padrão e Extremos) segmentadas por setor de atuação.
+    * ** 5. Projeção e Benchmarking:** Um ambiente interativo de simulação onde você pode editar os dados da sua empresa, projetar o próximo ciclo e comparar diretamente com a média de um grupo de pares (concorrentes).
+
+    ---
+    ### ⚠️ Avisos Legais e Privacidade
+    
+    * **Isenção de Responsabilidade:** O autor desta ferramenta **não se responsabiliza** por quaisquer tomadas de decisão, planejamentos financeiros ou usos profissionais baseados nestes painéis. 
+    * **Verifique os Dados:** A precisão dos gráficos depende unicamente da qualidade do FRE preenchido pela própria empresa. **É comum existirem erros de digitação, inconsistências ou omissões nos arquivos oficiais da CVM.** Utilize este painel como um direcional e valide sempre a informação na fonte oficial antes de qualquer uso crítico.
+    * **Privacidade Total:** Esta aplicação é executada inteiramente em tempo real e **não realiza nenhuma coleta de dados**. Quaisquer filtros selecionados ou números digitados na aba de Projeção existem apenas temporariamente no seu navegador e são apagados ao fechar a página.
+    * **Código Aberto:** O código-fonte deste projeto e os robôs de extração de dados são 100% públicos e transparentes. Você pode auditar o código ou contribuir através do nosso repositório no GitHub.
     """)
     
-    with st.expander("Clique para ver a Metodologia, Limitações e Fórmulas"):
+    with st.expander("📚 Clique para ver a Metodologia, Fórmulas e Limitações Técnicas"):
         st.subheader("Metodologia")
         st.markdown("""
         **1. Fonte e Coleta de Dados:**
-        * **Fonte Primária:** Formulário de Referência (FRE).
-        * **Estrutura dos Dados:** A análise respeita a estrutura de blocos de dados descrita:
-            * Remuneração Individual (Máxima, Média e Mínima) Fonte item 8.15 FRE.
-            * Componentes da Remuneração Total (Fixa e Variável). Fonte item 8.2 FRE.
-            * Métricas de Bônus e PLR (Alvo, Pago, etc.) Fonte Item 8.3 FRE.
+        * **Fonte Primária:** Formulário de Referência (FRE) - Portal de Dados Abertos CVM.
+        * **Estrutura de Extração:** * Remuneração Individual (Máxima, Média e Mínima) extraída do item 8.15 do FRE.
+            * Componentes da Remuneração Total (Fixa e Variável) extraídos do item 8.2 do FRE.
+            * Métricas de Bônus e PLR (Alvo, Pago, Mínimo, Máximo) extraídas do Item 8.3 do FRE.
 
         **2. Fórmulas e Cálculos:**
-        * **Média por Membro:** Quando selecionada, o cálculo é: *Média = Valor Total do Componente / Número de Membros Remunerados do Bloco*.
-        * **Quartis:** Calculados sobre a série de dados de remuneração para cada setor.
+        * **Média por Membro:** Calculada de forma linear: `Valor Total do Componente / Número de Membros Remunerados do Bloco`.
+        * **Quartis e Estatísticas:** Calculados utilizando a biblioteca Pandas sobre a série histórica filtrada de cada setor.
         """)
-        st.subheader("Limitações")
+        
+        st.subheader("Limitações dos Dados")
         st.markdown("""
-        **Aviso: Protótipo e Limitações dos Dados**
-        Este aplicativo é um protótipo. Os dados aqui exibidos não devem ser usados para fins profissionais ou tomadas de decisão críticas sem validação.
-        * **Qualidade do FRE:** A precisão depende da correção do FRE preenchido pela empresa.
-        * **Remuneração via Controladores:** Não inclui valores pagos por controladores ou outras empresas do grupo.
-        * **Dados de 2025:** Representam a proposta aprovada, não o valor efetivamente pago.
+        * **Remuneração via Controladores:** Os dados refletem apenas o que é pago diretamente pela companhia emissora. Não estão incluídos valores pagos por empresas controladoras ou outras entidades do mesmo grupo econômico.
+        * **Projeções do Ano Corrente (ex: 2025):** Os valores do ano vigente representam a *proposta aprovada* em Assembleia, e não necessariamente o valor que será *efetivamente pago* ao final do exercício fiscal.
         """)
+
+    st.markdown("---")
 
     # Carrega os dados e salva na sessão para as outras páginas usarem
     github_url = "https://raw.githubusercontent.com/tovarich86/pesq_rem_CVM/main/dados_cvm_mesclados.csv"
-    with st.spinner("Carregando base de dados da CVM..."):
+    with st.spinner("Conectando ao repositório e carregando a base de dados da CVM..."):
         df_original = load_data(github_url)
         
     if not df_original.empty:
-        # Guardando o DataFrame no estado da sessão (Session State)
         st.session_state['df_completo'] = df_original
-        st.success("Dados carregados com sucesso! Navegue pelo menu lateral.")
+        st.success("✅ Dados carregados com sucesso! Utilize o menu lateral esquerdo para começar sua análise.")
     else:
-        st.error("Falha ao carregar os dados.")
+        st.error("Falha ao carregar os dados do GitHub. Tente atualizar a página.")
 
 if __name__ == "__main__":
     main()
