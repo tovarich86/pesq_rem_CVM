@@ -3,7 +3,8 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
-from utils import get_default_index, create_download_button, renderizar_sidebar_global, format_year, formata_brl_int
+# Atualizamos o import para trazer o formata_abrev
+from utils import get_default_index, create_download_button, renderizar_sidebar_global, format_year, formata_brl_int, formata_abrev
 
 st.set_page_config(layout="wide", page_title="Componentes da Remuneração", page_icon="🧩")
 
@@ -52,8 +53,22 @@ if analysis_type == "Composição por Empresa (Ano Único)":
         df_plot = df_grouped.drop(columns='Total').reset_index().melt(id_vars='ORGAO_ADMINISTRACAO', var_name='Componente', value_name='Valor')
         df_plot = df_plot[df_plot['Valor'] > 0]
         df_plot['Componente'] = df_plot['Componente'].map({v: k for k, v in component_cols.items()})
-        fig = px.bar(df_plot, x='ORGAO_ADMINISTRACAO', y='Valor', color='Componente', title=f"Composição da Remuneração por Órgão para {empresa} em {format_year(ano)}", labels={'ORGAO_ADMINISTRACAO': 'Órgão', 'Valor': 'Valor (R$)'})
+        
+        # --- NOVIDADE: Cálculo de Porcentagem e Rótulos ---
+        totals_df = df_grouped[['Total']].reset_index()
+        df_plot = df_plot.merge(totals_df, on='ORGAO_ADMINISTRACAO')
+        df_plot['Perc'] = (df_plot['Valor'] / df_plot['Total']) * 100
+        # Só exibe o texto se a fatia for maior que 4% para evitar sobreposição
+        df_plot['Texto'] = df_plot.apply(lambda row: f"{formata_abrev(row['Valor'])}<br>({row['Perc']:.1f}%)" if row['Perc'] >= 4 else "", axis=1)
+
+        # Adicionamos text='Texto' no px.bar
+        fig = px.bar(df_plot, x='ORGAO_ADMINISTRACAO', y='Valor', color='Componente', text='Texto', 
+                     title=f"Composição da Remuneração por Órgão para {empresa} em {format_year(ano)}", labels={'ORGAO_ADMINISTRACAO': 'Órgão', 'Valor': 'Valor (R$)'})
+        
+        # Forçamos o texto a ficar no meio da barra e configuramos o separador
+        fig.update_traces(textposition='inside', insidetextanchor='middle')
         fig.update_layout(barmode='stack', separators=",.")
+        
         totals = df_grouped['Total']
         fig.add_trace(go.Scatter(x=totals.index, y=totals, text=[f"<b>{formata_brl_int(val)}</b>" for val in totals], mode='text', textposition='top center', showlegend=False))
         st.plotly_chart(fig, use_container_width=True)
@@ -97,8 +112,20 @@ elif analysis_type == "Evolução Anual Comparativa (por Empresa)":
     if not df_plot.empty:
         yearly_data['ANO_REFER_FORMATTED'] = yearly_data['ANO_REFER'].apply(format_year)
         df_plot = pd.merge(df_plot, yearly_data[['ANO_REFER', 'ANO_REFER_FORMATTED']], on='ANO_REFER')
-        fig = px.bar(df_plot, x='ANO_REFER_FORMATTED', y='Valor', color='Componente', title=f"Evolução dos Componentes para {empresa} ({orgao})", labels={'ANO_REFER_FORMATTED': 'Ano', 'Valor': f'Valor {calc_type} (R$)'})
+        
+        # --- NOVIDADE: Cálculo de Porcentagem e Rótulos ---
+        totals_df = yearly_data[['ANO_REFER_FORMATTED', 'Total']]
+        df_plot = pd.merge(df_plot, totals_df, on='ANO_REFER_FORMATTED')
+        df_plot['Perc'] = (df_plot['Valor'] / df_plot['Total']) * 100
+        df_plot['Texto'] = df_plot.apply(lambda row: f"{formata_abrev(row['Valor'])}<br>({row['Perc']:.1f}%)" if row['Perc'] >= 4 else "", axis=1)
+
+        # Adicionamos text='Texto' no px.bar
+        fig = px.bar(df_plot, x='ANO_REFER_FORMATTED', y='Valor', color='Componente', text='Texto',
+                     title=f"Evolução dos Componentes para {empresa} ({orgao})", labels={'ANO_REFER_FORMATTED': 'Ano', 'Valor': f'Valor {calc_type} (R$)'})
+        
+        fig.update_traces(textposition='inside', insidetextanchor='middle')
         fig.update_layout(xaxis_type='category', barmode='stack', separators=",.")
+        
         totals = yearly_data.set_index('ANO_REFER_FORMATTED')['Total']
         if calc_type == "Média por Membro":
             membros = yearly_data.set_index('ANO_REFER_FORMATTED')['NUM_MEMBROS_TOTAL']
@@ -112,6 +139,7 @@ elif analysis_type == "Evolução Anual Comparativa (por Empresa)":
         st.info("Não há dados para exibir para a seleção atual.")
         
 elif analysis_type == "Ranking de Empresas (Top 15)":
+    # Aqui o ranking já possui o text_auto='.2s' (que faz um formato parecido), mas o mantemos limpo.
     st.subheader("Ranking de Empresas por Componente de Remuneração")
     col1, col2, col3 = st.columns(3)
     with col1:
