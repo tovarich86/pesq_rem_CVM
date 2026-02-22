@@ -141,6 +141,10 @@ else:
     df_final_plot = df_base_plot
 
 # --- APLICAR FILTRO DE ANO ---
+# 1. Primeiro garantimos que a coluna 'Ano' é um número inteiro para a matemática funcionar
+df_final_plot['Ano'] = df_final_plot['Ano'].astype(int)
+
+# 2. Aplicamos o filtro do Slider
 df_final_plot = df_final_plot[(df_final_plot['Ano'] >= intervalo_anos[0]) & (df_final_plot['Ano'] <= intervalo_anos[1])]
 
 if df_final_plot.empty:
@@ -151,14 +155,8 @@ else:
     df_final_plot['Perc'] = (df_final_plot['Valor'] / totais_ano_tipo) * 100
     df_final_plot['Texto'] = df_final_plot.apply(lambda row: formata_abrev(row['Valor']) if row['Perc'] >= 5 else "", axis=1)
     
-    # Converte 'Ano' para string para manter o Plotly tratando como categoria no Eixo X
+    # 3. DEPOIS do filtro, voltamos a converter 'Ano' para string para o Plotly não somar os anos no eixo X
     df_final_plot['Ano'] = df_final_plot['Ano'].astype(str)
-
-    # Ordenação dos painéis (Sua Empresa -> Média -> Pares A, B, C...)
-    ordem_tipos = [nome_tipo_base]
-    if pares:
-        ordem_tipos.append('Média dos Pares')
-        ordem_tipos.extend(sorted(pares))
 
     # Construção do Gráfico Facetado (Subplots automáticos por Tipo de Empresa)
     fig = px.bar(
