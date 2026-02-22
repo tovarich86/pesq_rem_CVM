@@ -163,7 +163,7 @@ if confianca is not None:
 # ==========================================
 st.markdown("---")
 st.subheader("1. O que mais pesou na decisão da Inteligência Artificial? (Poder Preditivo)")
-st.info("💡 **Dica de Leitura:** Se a barra 'Prêmio Risco: % Ações Longo Prazo' possuir **40%**, isso indica que 40% das diferenças salariais entre as empresas desta amostra são explicadas exclusivamente pela quantidade de ações que elas oferecem. Variáveis no topo da lista são os principais "motores" que ditam a remuneração neste ano.")
+st.info("💡 **Dica de Leitura:** Se a barra 'Prêmio Risco: % Ações Longo Prazo' possuir **40%**, isso indica que 40% das diferenças salariais entre as empresas desta amostra são explicadas exclusivamente pela quantidade de ações que elas oferecem. Variáveis no topo da lista são os principais ´motores´ que ditam a remuneração neste ano.")
 
 todas_features = list(features_numericas)
 if usar_categoricas:
