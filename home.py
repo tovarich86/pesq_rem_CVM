@@ -54,7 +54,7 @@ def main():
     ### ⚠️ Avisos Legais e Privacidade
     
     * **Isenção de Responsabilidade:** O autor desta ferramenta **não se responsabiliza** por quaisquer tomadas de decisão, planejamentos financeiros ou usos profissionais baseados nestes painéis. 
-    * ** As informações devems ser analisadas sob a ótica da instrução normativa da CVM, é altamente recomendável ao analisar os dados ter em mãos o FRE da companhia e a instrução normativa para correta interpretação dos dados.
+    * * As informações devems ser analisadas sob a ótica da instrução normativa da CVM, é altamente recomendável ao analisar os dados ter em mãos o FRE da companhia e a instrução normativa para correta interpretação dos dados.**
     * **Verifique os Dados:** A precisão dos gráficos depende unicamente da qualidade do FRE preenchido pela própria empresa. **É comum existirem erros de digitação, inconsistências ou omissões nos arquivos oficiais da CVM.** Utilize este painel como um direcional e valide sempre a informação na fonte oficial antes de qualquer uso crítico.
     * **Privacidade Total:** Esta aplicação é executada inteiramente em tempo real e **não realiza nenhuma coleta de dados**. Quaisquer filtros selecionados ou números digitados na aba de Projeção existem apenas temporariamente no seu navegador e são apagados ao fechar a página.
     * **Código Aberto:** O código-fonte deste projeto e os robôs de extração de dados são 100% públicos e transparentes. Você pode auditar o código ou contribuir através do nosso repositório no GitHub.
